@@ -1,0 +1,313 @@
+// ================================================================
+// Prisma Schema — TechBlog Labs
+// 数据库: PostgreSQL (本地 / Supabase)
+// 连接串: postgresql://root:root123@localhost:5432/techblog_labs?schema=public
+// ================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ================================================================
+// 枚举
+// ================================================================
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+}
+
+// ================================================================
+// NextAuth 认证模型
+// ================================================================
+
+model User {
+  id             String         @id @default(cuid())
+  name           String?
+  email          String?        @unique
+  emailVerified  DateTime?
+  image          String?
+  hashedPassword String?
+  role           UserRole       @default(USER)
+  accounts       Account[]
+  sessions       Session[]
+  posts          Post[]
+  lifePosts      LifePost[]
+  projects       Project[]
+  comments       Comment[]
+  aiQuotas       AIQuota[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ================================================================
+// 博客文章
+// ================================================================
+
+model Post {
+  id          String     @id @default(cuid())
+  title       String
+  slug        String     @unique
+  content     String     @db.Text
+  excerpt     String?
+  coverImage  String?
+  published   Boolean    @default(false)
+  featured    Boolean    @default(false)
+  viewCount   Int        @default(0)
+  likeCount   Int        @default(0)
+  status      PostStatus @default(DRAFT)
+  authorId    String
+  author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  tags        TagOnPost[]
+  comments    Comment[]
+  likes       PostLike[]
+  chunks      PostChunk[]
+  publishedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+
+  @@index([slug])
+  @@index([authorId])
+  @@index([status])
+  @@index([published])
+  @@index([createdAt])
+}
+
+// ================================================================
+// 文章点赞
+// ================================================================
+
+model PostLike {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([postId])
+  @@index([userId])
+}
+
+// ================================================================
+// 标签
+// ================================================================
+
+model Tag {
+  id    String      @id @default(cuid())
+  name  String      @unique
+  slug  String      @unique
+  posts TagOnPost[]
+}
+
+model TagOnPost {
+  postId String
+  tagId  String
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+}
+
+// ================================================================
+// 评论
+// ================================================================
+
+model Comment {
+  id         String    @id @default(cuid())
+  content    String    @db.Text
+  postId     String
+  post       Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  isApproved Boolean   @default(false)
+  parentId   String?
+  parent     Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies    Comment[] @relation("CommentReplies")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([postId])
+  @@index([authorId])
+  @@index([isApproved])
+  @@index([parentId])
+}
+
+// ================================================================
+// 生活分享
+// ================================================================
+
+model LifePost {
+  id        String     @id @default(cuid())
+  content   String     @db.Text
+  images    String[]
+  likeCount Int        @default(0)
+  authorId  String
+  author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  isPublic  Boolean    @default(true)
+  likes     LifeLike[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([authorId])
+  @@index([createdAt])
+}
+
+// ================================================================
+// 生活分享点赞
+// ================================================================
+
+model LifeLike {
+  id         String   @id @default(cuid())
+  userId     String
+  lifePostId String
+  lifePost   LifePost @relation(fields: [lifePostId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, lifePostId])
+  @@index([lifePostId])
+  @@index([userId])
+}
+
+// ================================================================
+// 项目分享
+// ================================================================
+
+model Project {
+  id          String        @id @default(cuid())
+  title       String
+  slug        String        @unique
+  description String        @db.Text
+  coverImage  String?
+  techStack   String[]
+  repoUrl     String?
+  demoUrl     String?
+  downloadUrl String?
+  content     String?       @db.Text
+  viewCount   Int           @default(0)
+  likeCount   Int           @default(0)
+  isPublic    Boolean       @default(true)
+  featured    Boolean       @default(false)
+  sortOrder   Int           @default(0)
+  authorId    String
+  author      User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes       ProjectLike[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([authorId])
+  @@index([createdAt])
+  @@index([slug])
+}
+
+// ================================================================
+// 项目点赞
+// ================================================================
+
+model ProjectLike {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, projectId])
+  @@index([projectId])
+  @@index([userId])
+}
+
+// ================================================================
+// 系统配置
+// ================================================================
+
+model SystemConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+}
+
+// ================================================================
+// AI 调用配额
+// ================================================================
+
+model AIQuota {
+  id     String   @id @default(cuid())
+  userId String
+  date   DateTime @default(now())
+  count  Int      @default(0)
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+// ================================================================
+// 文章切片（RAG）
+// ================================================================
+
+model PostChunk {
+  id        String   @id @default(cuid())
+  postId    String
+  chunkIndex Int
+  content   String   @db.Text
+  embedding String?  @db.Text
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+  @@index([postId, chunkIndex])
+}
