@@ -32,7 +32,7 @@ export function LifeCard({ post, onDelete }: LifeCardProps) {
   const [liked, setLiked] = useState(post.isLiked ?? false);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const isOwner = session?.user?.id === post.author.id;
-  const isAdmin = session?.user?.role === "ADMIN";
+  // 编辑/删除权限：仅作者本人（管理员也只管理自己的分享）
 
   async function handleLike() {
     if (!session?.user) {
@@ -88,17 +88,15 @@ export function LifeCard({ post, onDelete }: LifeCardProps) {
           </p>
         </div>
 
-        {/* 操作按钮 */}
-        {(isOwner || isAdmin) && (
+        {/* 操作按钮：仅作者本人可见（与服务端权限保持一致） */}
+        {isOwner && (
           <div className="flex items-center gap-1">
-            {isOwner && (
-              <Link
-                href={`/life/edit/${post.id}`}
-                className="rounded p-1 text-xs text-[rgb(var(--muted-foreground))] hover:text-amber-bright transition-colors"
-              >
-                编辑
-              </Link>
-            )}
+            <Link
+              href={`/life/edit/${post.id}`}
+              className="rounded p-1 text-xs text-[rgb(var(--muted-foreground))] hover:text-amber-bright transition-colors"
+            >
+              编辑
+            </Link>
             <button
               onClick={handleDelete}
               disabled={isPending}

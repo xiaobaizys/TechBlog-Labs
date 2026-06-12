@@ -18,6 +18,7 @@ type DashboardData = {
 };
 
 // 直接用 Prisma 查 DB（避免服务端 fetch 自家 API 缺 cookie → 403）
+// 优化：7 天每日统计改用并行查询替代顺序循环，减少等待时间
 async function getDashboard(): Promise<DashboardData> {
   const now = new Date();
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -46,32 +47,37 @@ async function getDashboard(): Promise<DashboardData> {
       }),
     ]);
 
-  // 近 7 天逐日统计
-  const weeklyPosts: { date: string; count: number }[] = [];
-  const weeklyComments: { date: string; count: number }[] = [];
-
-  for (let i = 6; i >= 0; i--) {
+  // 近 7 天逐日统计（并行查询 14 次调用的 7 组 × 2）
+  const dayEntries = Array.from({ length: 7 }, (_, i) => {
     const dayStart = new Date(startOfToday);
-    dayStart.setDate(dayStart.getDate() - i);
+    dayStart.setDate(dayStart.getDate() - (6 - i));
     const dayEnd = new Date(dayStart);
     dayEnd.setDate(dayEnd.getDate() + 1);
     const dateStr = dayStart.toISOString().slice(0, 10);
+    return { dayStart, dayEnd, dateStr };
+  });
 
-    const [postCount, commentCount] = await Promise.all([
-      prisma.post.count({
-        where: {
-          createdAt: { gte: dayStart, lt: dayEnd },
-          deletedAt: null,
-        },
-      }),
-      prisma.comment.count({
-        where: { createdAt: { gte: dayStart, lt: dayEnd } },
-      }),
-    ]);
+  const dailyResults = await Promise.all(
+    dayEntries.map((day) =>
+      Promise.all([
+        prisma.post.count({
+          where: { createdAt: { gte: day.dayStart, lt: day.dayEnd }, deletedAt: null },
+        }),
+        prisma.comment.count({
+          where: { createdAt: { gte: day.dayStart, lt: day.dayEnd } },
+        }),
+      ])
+    )
+  );
 
-    weeklyPosts.push({ date: dateStr, count: postCount });
-    weeklyComments.push({ date: dateStr, count: commentCount });
-  }
+  const weeklyPosts = dailyResults.map(([count], i) => ({
+    date: dayEntries[i].dateStr,
+    count,
+  }));
+  const weeklyComments = dailyResults.map(([_, count], i) => ({
+    date: dayEntries[i].dateStr,
+    count,
+  }));
 
   return {
     totalPosts,

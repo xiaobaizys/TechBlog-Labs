@@ -19,7 +19,6 @@ const DEFAULTS: Record<string, string> = {
 // ============================================================
 
 let cache: Record<string, string> | null = null;
-let cacheVersion: string | null = null;
 let cacheTime = 0;
 const CACHE_TTL = 60_000; // 60秒缓存
 
@@ -40,36 +39,26 @@ export async function getConfig(key: string): Promise<string> {
 }
 
 /**
- * 获取所有配置（带缓存）
+ * 获取所有配置（带 TTL 缓存）
+ *
+ * 简化版本：不依赖版本号检查，仅基于时间过期。
+ * 60 秒 TTL 对于个人博客完全足够，省去每次缓存命中时的额外查询。
  */
 export async function getAllConfig(): Promise<Record<string, string>> {
-  // 检查缓存是否有效
   if (cache && cacheTime > Date.now() - CACHE_TTL) {
-    // 快速检查版本
-    const version = await getCacheVersion();
-    if (version === cacheVersion) {
-      return { ...DEFAULTS, ...cache };
-    }
+    return { ...DEFAULTS, ...cache };
   }
 
-  // 从数据库加载
   const rows = await prisma.systemConfig.findMany({
     select: { key: true, value: true },
   });
 
   const config: Record<string, string> = {};
-  let version: string | null = null;
-
   for (const row of rows) {
-    if (row.key === "_cache_version") {
-      version = row.value;
-    } else {
-      config[row.key] = row.value;
-    }
+    config[row.key] = row.value;
   }
 
   cache = config;
-  cacheVersion = version;
   cacheTime = Date.now();
 
   return { ...DEFAULTS, ...config };
@@ -97,18 +86,5 @@ export async function getBoolConfig(key: string, fallback: boolean = false): Pro
  */
 export function clearConfigCache(): void {
   cache = null;
-  cacheVersion = null;
   cacheTime = 0;
-}
-
-// ============================================================
-// 内部
-// ============================================================
-
-async function getCacheVersion(): Promise<string | null> {
-  const row = await prisma.systemConfig.findUnique({
-    where: { key: "_cache_version" },
-    select: { value: true },
-  });
-  return row?.value ?? null;
 }

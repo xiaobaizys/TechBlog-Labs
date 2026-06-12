@@ -6,7 +6,9 @@
  * 语义理解，结合 PostgreSQL 全文检索进行文本匹配。
  */
 
-const DEEPSEEK_BASE = "https://api.deepseek.com";
+import { getActiveAiProvider } from "./provider";
+
+const DEFAULT_BASE = "https://api.deepseek.com";
 /** DeepSeek 请求总超时（毫秒）—— 网络抖动时不会无限挂死 */
 const REQUEST_TIMEOUT_MS = 30_000;
 /** DeepSeek 非流式重试次数（不含首次） */
@@ -27,18 +29,20 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
  */
 async function fetchDeepSeek(
   body: Record<string, unknown>,
-  stream: boolean
+  stream: boolean,
+  baseUrl: string,
+  apiKey: string
 ): Promise<Response> {
   let lastErr: unknown = null;
   for (let attempt = 0; attempt <= RETRY_TIMES; attempt++) {
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), REQUEST_TIMEOUT_MS);
     try {
-      const res = await fetch(`${DEEPSEEK_BASE}/v1/chat/completions`, {
+      const res = await fetch(`${baseUrl}/v1/chat/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+          Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify(body),
         signal: ac.signal,
@@ -80,19 +84,21 @@ export async function callDeepSeek(
   messages: { role: string; content: string }[],
   options?: { temperature?: number; max_tokens?: number }
 ): Promise<string> {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey || apiKey === "sk-placeholder") {
-    throw new Error("DeepSeek API Key 未配置");
+  const provider = await getActiveAiProvider();
+  if (!provider) {
+    throw new Error("AI 未配置：请在管理后台添加 AI 提供商或设置 DEEPSEEK_API_KEY 环境变量");
   }
 
   const res = await fetchDeepSeek(
     {
-      model: "deepseek-chat",
+      model: provider.model,
       messages,
       temperature: options?.temperature ?? 0.7,
       max_tokens: options?.max_tokens ?? 2000,
     },
-    false
+    false,
+    provider.baseUrl,
+    provider.apiKey
   );
 
   if (!res.ok) {
@@ -113,9 +119,9 @@ export async function* streamDeepSeek(
   messages: { role: string; content: string }[],
   options?: { temperature?: number; max_tokens?: number }
 ): AsyncGenerator<string> {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey || apiKey === "sk-placeholder") {
-    yield "DeepSeek API Key 未配置，请在 .env.local 中设置 DEEPSEEK_API_KEY";
+  const provider = await getActiveAiProvider();
+  if (!provider) {
+    yield "AI 未配置：请在管理后台添加 AI 提供商或设置 DEEPSEEK_API_KEY 环境变量";
     return;
   }
 
@@ -123,13 +129,15 @@ export async function* streamDeepSeek(
   try {
     res = await fetchDeepSeek(
       {
-        model: "deepseek-chat",
+        model: provider.model,
         messages,
         temperature: options?.temperature ?? 0.7,
         max_tokens: options?.max_tokens ?? 2000,
         stream: true,
       },
-      true
+      true,
+      provider.baseUrl,
+      provider.apiKey
     );
   } catch (err: any) {
     const msg = err?.name === "AbortError" ? "DeepSeek 请求超时（30s）" : `DeepSeek 请求失败: ${err?.message ?? err}`;

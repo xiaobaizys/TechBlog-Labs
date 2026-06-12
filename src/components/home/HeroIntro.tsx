@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import { UserAvatar } from '@/components/user/UserAvatar'
@@ -10,35 +10,43 @@ import { UserAvatar } from '@/components/user/UserAvatar'
  *
  * 布局：
  *  - 顶部 topbar：左小头像 + 换一张（切换背景图），右 nav 链接
- *  - 全屏背景图（fixed position），4 张可切，默认 background (1).png
+ *  - 全屏背景图（fixed position），从数据库读取背景图片列表
  *  - 左上角："WELCOME" 巨字 + 副标 + EXPLORE 按钮
  *
  * 滚动驱动（仿 taozhiyy 效果）：
  *  - 背景图倾斜（rotate）+ 缩小（scale）
  *  - 内容向上飞
  *  - 下方面板淡入
- *
- * 加载策略（首屏优化）：
- *  - 仅预加载第 1 张（默认展示）
- *  - 用户首次点击"换一张"时，预先 fetch 下一张到缓存
- *  - 其余图片按访问顺序 lazy fetch，避开首屏 ~1.5MB 图片瀑布
  */
-const HERO_BGS = [
-  '/image/background%20(1).png', // 默认 · 立即预加载
-  '/image/background%20(2).jpg',
-  '/image/background%20(3).jpg',
-  '/image/background%20(4).jpg',
-] as const
 
 export function HeroIntro() {
   const ref = useRef<HTMLElement>(null)
   const [bgIndex, setBgIndex] = useState(0)
+  const [heroBgs, setHeroBgs] = useState<string[]>([
+    // 默认回退图（前端硬编码）
+    '/image/background%20(1).png',
+    '/image/background%20(2).jpg',
+    '/image/background%20(3).jpg',
+    '/image/background%20(4).jpg',
+  ])
   const { data: session } = useSession()
   const user = session?.user
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ['start start', 'end start'],
   })
+
+  // 从数据库读取启用的背景图片
+  useEffect(() => {
+    fetch('/api/home-backgrounds')
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success && json.data.length > 0) {
+          setHeroBgs(json.data.map((b: { url: string }) => b.url))
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   // 背景图滚动：轻微放大 + 整体倾斜 + 缩小，揭示下方
   const bgScale = useTransform(scrollYProgress, [0, 1], [1.0, 0.85])
@@ -59,14 +67,14 @@ export function HeroIntro() {
    */
   const prefetched = useRef<Set<number>>(new Set([0]))
   const prefetchNext = (current: number) => {
-    const next = (current + 1) % HERO_BGS.length
+    const next = (current + 1) % heroBgs.length
     if (prefetched.current.has(next)) return
     prefetched.current.add(next)
     if (typeof window === 'undefined') return
     const link = document.createElement('link')
     link.rel = 'prefetch'
     link.as = 'image'
-    link.href = HERO_BGS[next]
+    link.href = heroBgs[next]
     document.head.appendChild(link)
   }
 
@@ -80,7 +88,7 @@ export function HeroIntro() {
 
   function switchCover() {
     setBgIndex((i) => {
-      const next = (i + 1) % HERO_BGS.length
+      const next = (i + 1) % heroBgs.length
       prefetchNext(next)
       return next
     })
@@ -91,7 +99,7 @@ export function HeroIntro() {
       {/* 全屏背景图：4 张可切，AnimatePresence 做交叉淡入 */}
       <motion.div className="vitalog-hero-intro__bg" style={{ scale: bgScale, rotate: bgRotate, y: bgY }} aria-hidden>
         <AnimatePresence initial={false}>
-          <motion.img key={bgIndex} src={HERO_BGS[bgIndex]} alt="" className="vitalog-hero-intro__bg-img" initial={{ opacity: 0, scale: 1.05 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7, ease: [0.22, 0.61, 0.36, 1] }} />
+          <motion.img key={bgIndex} src={heroBgs[bgIndex]} alt="" className="vitalog-hero-intro__bg-img" initial={{ opacity: 0, scale: 1.05 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7, ease: [0.22, 0.61, 0.36, 1] }} />
         </AnimatePresence>
         {/* 暗化蒙版：保证左上文清晰可读 */}
         <div className="vitalog-hero-intro__bg-veil" />

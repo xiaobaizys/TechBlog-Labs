@@ -8,19 +8,12 @@ import { HomeExperience } from "@/components/home/HomeExperience";
  *  - 保持 server 组件以便未来做 SEO/分享卡片
  *
  *  首屏加载策略：
- *  - 预加载首张 Hero 背景（首屏最大、最重的一张图）
+ *  - 背景通过 BgLayer（CSS 渐变色）实现，无需图片预加载
  *  - GSAP（GSAPHorizontalPanel）等重依赖由各组件内部 next/dynamic 接管
  */
 export default function HomePage() {
   return (
     <main className="vitalog-home">
-      <link
-        rel="preload"
-        as="image"
-        href="/image/background%20(1).png"
-        // 兼顾 light/dark 模式（这里背景图不随主题变化，但 fetchpriority 仍按主屏优先）
-        fetchPriority="high"
-      />
       <HomeExperience />
     </main>
   );

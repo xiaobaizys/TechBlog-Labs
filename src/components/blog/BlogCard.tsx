@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { UserAvatar } from "@/components/user/UserAvatar";
+import { HighlightText } from "@/components/search/HighlightText";
 
 export type BlogCardPost = {
   id: string;
@@ -24,14 +25,16 @@ export type BlogCardPost = {
     name: string;
     slug: string;
   }[];
+  // 可选：搜索高亮片段（来自 /api/search/posts）
+  highlight?: { text: string; hit: boolean }[] | null;
 };
 
-export function BlogCard({ post }: { post: BlogCardPost }) {
+export function BlogCard({ post, showHighlight = false }: { post: BlogCardPost; showHighlight?: boolean }) {
   const dateStr = post.publishedAt ?? post.createdAt;
   const date = new Date(dateStr);
 
   return (
-    <article className="theme-card-hover group overflow-hidden h-full flex flex-col">
+    <article className="theme-card-hover group overflow-hidden h-full flex flex-col [content-visibility:auto]">
       {/* 封面图 */}
       {post.coverImage && (
         <Link href={`/blog/${post.slug}`} className="block overflow-hidden">
@@ -71,14 +74,22 @@ export function BlogCard({ post }: { post: BlogCardPost }) {
         {/* 标题 */}
         <Link href={`/blog/${post.slug}`} className="group/title">
           <h2 className="text-lg font-serif font-medium leading-snug tracking-tight transition-colors group-hover/title:text-amber-bright">
-            {post.title}
+            {showHighlight ? (
+              <HighlightText fragments={post.highlight} fallback={post.title} />
+            ) : (
+              post.title
+            )}
           </h2>
         </Link>
 
         {/* 摘要 */}
-        {post.excerpt && (
+        {(post.excerpt || post.highlight) && (
           <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-[rgb(var(--muted-foreground))]">
-            {post.excerpt}
+            {showHighlight ? (
+              <HighlightText fragments={post.highlight} fallback={post.excerpt ?? ""} />
+            ) : (
+              post.excerpt
+            )}
           </p>
         )}
 

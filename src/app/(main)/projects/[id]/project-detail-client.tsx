@@ -83,7 +83,7 @@ export function ProjectDetailClient({
         </motion.span>
       </AnimatePresence>
       <span className="font-semibold tabular-nums">{count}</span>
-      <span className="hidden sm:inline">{liked ? "Starred" : "Star"}</span>
+      <span className="hidden sm:inline">{liked ? "已收藏" : "收藏"}</span>
     </button>
   );
 }

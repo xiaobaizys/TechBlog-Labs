@@ -80,6 +80,7 @@ export function AIChatDialog({ onClose }: { onClose: () => void }) {
   const { data: session } = useSession();
   const page = useCurrentPage();
   const [tab, setTab] = useState<Tab>("chat");
+  const isLoggedIn = !!session?.user;
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -93,6 +94,16 @@ export function AIChatDialog({ onClose }: { onClose: () => void }) {
   const [quota, setQuota] = useState<{ remaining: number; limit: number } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // ---- 聊天记录持久化 ----
+  const [sessions, setSessions] = useState<
+    { id: string; title: string; messageCount: number; updatedAt: string }[]
+  >([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [showSessions, setShowSessions] = useState(false);
+  // 当前对话的用户消息计数器（用于首次保存时判断是否为新 session 触发标题）
+  const userMsgCountRef = useRef(0);
 
   // 用于：
   //   1. 稳定 id 自增（避免 key={i} 破坏流式 diff）
@@ -135,6 +146,168 @@ export function AIChatDialog({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     inputRef.current?.focus();
   }, [tab]);
+
+  // ---- 加载用户会话列表 + 最近一次对话 ----
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    let cancelled = false;
+
+    const load = async () => {
+      setLoadingHistory(true);
+      try {
+        const res = await fetch("/api/ai/chat/history");
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!json.success || !json.data?.length) return;
+
+        const list = json.data as {
+          id: string;
+          title: string;
+          messageCount: number;
+          updatedAt: string;
+        }[];
+        if (cancelled) return;
+        setSessions(list);
+
+        // 自动加载最近一次会话
+        const latest = list[0];
+        const msgRes = await fetch(`/api/ai/chat/history/${latest.id}`);
+        if (!msgRes.ok) return;
+        const msgJson = await msgRes.json();
+        if (!msgJson.success || !msgJson.data) return;
+
+        const loaded = (msgJson.data.messages as { role: string; content: string; sources?: { title: string; slug: string }[] }[])
+          .filter((m) => m.role === "user" || m.role === "assistant");
+
+        if (cancelled || loaded.length === 0) return;
+
+        // 将加载的消息转为 Message 格式
+        const restored: Message[] = loaded.map((m, i) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+          sources: m.sources,
+          _id: -(i + 2), // 用负数 id 避免与新的递增 id 冲突
+        }));
+        // 重置 id 计数器到加载的消息数量
+        idCounterRef.current = restored.length;
+        userMsgCountRef.current = restored.filter((m) => m.role === "user").length;
+
+        if (cancelled) return;
+        setMessages(restored);
+        setCurrentSessionId(latest.id);
+      } catch {
+        // 静默失败
+      } finally {
+        if (!cancelled) setLoadingHistory(false);
+      }
+    };
+
+    void load();
+    return () => { cancelled = true; };
+  }, [isLoggedIn]);
+
+  // ---- 保存一轮对话到后端 ----
+  const saveHistory = useCallback(
+    async (
+      userMessage: string,
+      assistantContent: string,
+      sources?: { title: string; slug: string }[]
+    ) => {
+      if (!isLoggedIn) return;
+      try {
+        const res = await fetch("/api/ai/chat/history", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: currentSessionId,
+            userMessage,
+            assistantContent,
+            sources,
+          }),
+        });
+        const json = await res.json();
+        if (json.success && json.data?.sessionId) {
+          const newId = json.data.sessionId;
+          // 如果是新 session，记录 id
+          if (newId !== currentSessionId) {
+            setCurrentSessionId(newId);
+          }
+          // 刷新会话列表
+          const listRes = await fetch("/api/ai/chat/history");
+          if (listRes.ok) {
+            const listJson = await listRes.json();
+            if (listJson.success) setSessions(listJson.data);
+          }
+        }
+      } catch {
+        // 静默失败
+      }
+    },
+    [isLoggedIn, currentSessionId]
+  );
+
+  // ---- 新对话 ----
+  const newChat = useCallback(() => {
+    setMessages([
+      {
+        role: "assistant",
+        content: "你好呀~ 我是博客小精灵 ✨\n\n可以问我关于博客内容的问题，比如：\n- 这篇文章讲了什么？\n- 博客里有没有讲过 XXX？\n- 帮我总结一下最近的文章…",
+        _id: -1,
+      },
+    ]);
+    setCurrentSessionId(null);
+    idCounterRef.current = 0;
+    userMsgCountRef.current = 0;
+    setInput("");
+    setQuota(null);
+  }, []);
+
+  // ---- 切换到指定会话 ----
+  const switchSession = useCallback(async (sessionId: string) => {
+    setLoadingHistory(true);
+    try {
+      const res = await fetch(`/api/ai/chat/history/${sessionId}`);
+      if (!res.ok) return;
+      const json = await res.json();
+      if (!json.success) return;
+
+      const loaded = (json.data.messages as { role: string; content: string; sources?: { title: string; slug: string }[] }[])
+        .filter((m) => m.role === "user" || m.role === "assistant");
+
+      const restored: Message[] = loaded.map((m, i) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+        sources: m.sources,
+        _id: -(i + 2),
+      }));
+
+      idCounterRef.current = restored.length;
+      userMsgCountRef.current = restored.filter((m) => m.role === "user").length;
+
+      setMessages(restored);
+      setCurrentSessionId(sessionId);
+    } catch {
+      // 静默失败
+    } finally {
+      setLoadingHistory(false);
+      setShowSessions(false);
+    }
+  }, []);
+
+  // ---- 删除会话 ----
+  const deleteSession = useCallback(
+    async (sessionId: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      try {
+        await fetch(`/api/ai/chat/history/${sessionId}`, { method: "DELETE" });
+        setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+        if (currentSessionId === sessionId) newChat();
+      } catch {
+        // 静默失败
+      }
+    },
+    [currentSessionId, newChat]
+  );
 
   // 最后一条 assistant 消息的 id（用于"思考中..."显示在哪一条）
   const lastAssistantId = (() => {
@@ -247,6 +420,12 @@ export function AIChatDialog({ onClose }: { onClose: () => void }) {
             }
           }
         }
+
+        // 流完成 → 自动保存到历史记录
+        if (fullContent) {
+          userMsgCountRef.current += 1;
+          void saveHistory(text, fullContent, sources.length > 0 ? sources : undefined);
+        }
       } catch (err: any) {
         if (err?.name === "AbortError") {
           // 主动停止：保留已收到的内容；空消息时给个「已停止」标记
@@ -278,7 +457,7 @@ export function AIChatDialog({ onClose }: { onClose: () => void }) {
         if (abortRef.current === ac) abortRef.current = null;
       }
     },
-    [input, loading, page.type, page.title, page.url, setLastAssistantContent]
+    [input, loading, page.type, page.title, page.url, setLastAssistantContent, saveHistory]
   );
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -315,7 +494,6 @@ export function AIChatDialog({ onClose }: { onClose: () => void }) {
     [loading, sendMessage]
   );
 
-  const isLoggedIn = !!session?.user;
   const limit = quota?.limit ?? (isLoggedIn ? 50 : 10);
   const remaining = quota?.remaining ?? limit;
 
@@ -340,15 +518,45 @@ export function AIChatDialog({ onClose }: { onClose: () => void }) {
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="关闭"
-            className="rounded-lg p-1.5 text-[rgb(var(--muted-foreground))] hover:bg-[rgb(var(--background))]/60"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-1">
+            {/* 新对话 — 仅登录用户显示 */}
+            {isLoggedIn && (
+              <button
+                onClick={newChat}
+                title="新对话"
+                className="rounded-lg p-1.5 text-[rgb(var(--muted-foreground))] hover:bg-[rgb(var(--background))]/60"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+              </button>
+            )}
+            {/* 历史记录 — 仅登录用户显示 */}
+            {isLoggedIn && (
+              <button
+                onClick={() => setShowSessions((v) => !v)}
+                title="历史记录"
+                className={`rounded-lg p-1.5 transition-all ${
+                  showSessions
+                    ? "bg-amber/20 text-amber-bright"
+                    : "text-[rgb(var(--muted-foreground))] hover:bg-[rgb(var(--background))]/60"
+                }`}
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              aria-label="关闭"
+              className="rounded-lg p-1.5 text-[rgb(var(--muted-foreground))] hover:bg-[rgb(var(--background))]/60"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Tab + 当前页面 + 配额 */}
@@ -392,7 +600,7 @@ export function AIChatDialog({ onClose }: { onClose: () => void }) {
         {/* 配额 + 登录入口（第二行） */}
         <div className="mt-2 flex items-center justify-between gap-2 text-[10px]">
           <span className="rounded-full border border-[rgb(var(--border))] bg-[rgb(var(--background))]/70 px-2.5 py-1 text-[rgb(var(--muted-foreground))]">
-            今日剩余：<span className="font-semibold text-amber-bright">{remaining}</span>/{limit} ·
+          今日剩余：<span className="font-semibold text-amber-bright">{remaining}</span>/{limit} ·
             {isLoggedIn ? " 已登录" : " 登录后 50 次/天"}
           </span>
           {!isLoggedIn && (
@@ -409,10 +617,53 @@ export function AIChatDialog({ onClose }: { onClose: () => void }) {
 
       {/* ===== 内容区 ===== */}
       {tab === "chat" ? (
-        <>
-          {/* 消息列表 */}
-          <div className="flex-1 overflow-y-auto bg-[rgb(var(--background))]/40 px-4 py-4 space-y-3">
-            {messages.map((msg) => (
+        <div className="flex flex-1 overflow-hidden">
+          {/* 会话侧边栏 */}
+          {showSessions && isLoggedIn && (
+            <div className="w-44 shrink-0 overflow-y-auto border-r border-[rgb(var(--border))] bg-[rgb(var(--background))]/30 p-2">
+              {loadingHistory ? (
+                <div className="py-4 text-center text-[10px] text-[rgb(var(--muted-foreground))]">加载中...</div>
+              ) : sessions.length === 0 ? (
+                <div className="py-4 text-center text-[10px] text-[rgb(var(--muted-foreground))]">暂无历史记录</div>
+              ) : (
+                <div className="space-y-1">
+                  {sessions.map((s) => (
+                    <div
+                      key={s.id}
+                      onClick={() => switchSession(s.id)}
+                      className={`group flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 text-xs transition-all ${
+                        s.id === currentSessionId
+                          ? "bg-amber/15 text-amber-bright font-medium"
+                          : "text-[rgb(var(--muted-foreground))] hover:bg-[rgb(var(--background))]/60 hover:text-[rgb(var(--foreground))]"
+                      }`}
+                    >
+                      <span className="truncate flex-1">{s.title}</span>
+                      <button
+                        onClick={(e) => deleteSession(s.id, e)}
+                        className="ml-1 shrink-0 rounded p-0.5 opacity-0 group-hover:opacity-100 hover:bg-rose-100 hover:text-rose-500"
+                        title="删除"
+                      >
+                        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {/* 消息 + 输入 */}
+          <div className="flex flex-1 flex-col overflow-hidden">
+            {/* 消息列表 */}
+            <div className="flex-1 overflow-y-auto bg-[rgb(var(--background))]/40 px-4 py-4 space-y-3">
+              {loadingHistory ? (
+                <div className="flex h-full items-center justify-center">
+                  <div className="text-xs text-[rgb(var(--muted-foreground))] animate-pulse">加载历史记录...</div>
+                </div>
+              ) : (
+                <>
+              {messages.map((msg) => (
               <div key={msg._id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div
                   className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-sm ${
@@ -465,6 +716,7 @@ export function AIChatDialog({ onClose }: { onClose: () => void }) {
               </div>
             ))}
             <div ref={bottomRef} />
+          </>)}
           </div>
 
           {/* 输入框 */}
@@ -504,7 +756,8 @@ export function AIChatDialog({ onClose }: { onClose: () => void }) {
               {isLoggedIn ? "已登录 · 思考中请耐心等待" : "未登录：不限制调用次数，但生成内容可能不稳定"}
             </p>
           </div>
-        </>
+        </div>
+      </div>
       ) : (
         /* ===== 生图 Tab（占位） ===== */
         <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-[rgb(var(--background))]/40 p-6 text-center">

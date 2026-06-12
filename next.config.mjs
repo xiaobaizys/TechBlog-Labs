@@ -14,6 +14,8 @@ const nextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     // 列表卡片缩略图常用尺寸
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    // 输出格式：优先 AVIF，回退 WebP（需 sharp 支持）
+    formats: ["image/avif", "image/webp"],
     // 输出格式：默认 next/image 会自动 webp / avif
     // 不强制 minimumCacheTTL，next 默认最长 1 年
   },

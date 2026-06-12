@@ -979,6 +979,159 @@
 }
 
 /* ============================================================
+   无图时辰 · 右侧装饰强化
+   - 大字水印 + 时间刻度盘 + 装饰画（同心）+ 竖排时辰名
+     + 时刻数字 + 浮动光点
+   - 时辰刻度盘包裹装饰画，形成"画中画"层次
+   ============================================================ */
+.vitalog-shi__watermark {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-serif);
+  font-size: clamp(220px, 28vw, 360px);
+  font-weight: 500;
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  opacity: 0.08;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+}
+
+.vitalog-shi__dial {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 380px;
+  height: 380px;
+  opacity: 0.85;
+  pointer-events: none;
+  z-index: 2;
+  will-change: transform;
+}
+
+.vitalog-shi__dial svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.vitalog-shi__vname {
+  position: absolute;
+  right: 32px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-serif);
+  font-size: clamp(20px, 1.8vw, 28px);
+  font-weight: 400;
+  letter-spacing: 0.4em;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 4;
+  line-height: 1.1;
+}
+
+.vitalog-shi__vname span {
+  display: block;
+}
+
+.vitalog-shi__timecode {
+  position: absolute;
+  right: 60px;
+  bottom: 100px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: clamp(11px, 1.05vw, 14px);
+  letter-spacing: 0.28em;
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vitalog-shi__timecode-hash {
+  opacity: 0.5;
+  margin-right: 4px;
+}
+
+.vitalog-shi__dots {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.vitalog-shi__dot {
+  position: absolute;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+  animation: vitalog-shi-dot-twinkle 3.6s ease-in-out infinite;
+}
+
+@keyframes vitalog-shi-dot-twinkle {
+  0%, 100% {
+    transform: scale(1);
+    opacity: var(--dot-opacity, 0.4);
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: calc(var(--dot-opacity, 0.4) * 0.55);
+  }
+}
+
+/* 较窄屏幕：装饰画与刻度盘缩小，避免挤压文字 */
+@media (max-width: 1100px) {
+  .vitalog-shi__dial {
+    width: 320px;
+    height: 320px;
+    opacity: 0.6;
+  }
+  .vitalog-shi__vname {
+    right: 20px;
+    font-size: 18px;
+  }
+  .vitalog-shi__timecode {
+    right: 36px;
+  }
+}
+
+@media (max-width: 900px) {
+  .vitalog-shi__dial {
+    width: 280px;
+    height: 280px;
+    right: -10px;
+    opacity: 0.5;
+  }
+  .vitalog-shi__art {
+    right: 30px;
+    width: 180px;
+    height: 180px;
+  }
+  .vitalog-shi__watermark {
+    font-size: clamp(160px, 38vw, 240px);
+  }
+  .vitalog-shi__vname {
+    right: 14px;
+    font-size: 16px;
+    letter-spacing: 0.3em;
+  }
+  .vitalog-shi__timecode {
+    right: 24px;
+    bottom: 70px;
+  }
+}
+
+/* ============================================================
    时辰配图（仿 taozhiyy.top 风格：左文右图 / 透明图）
    - 4 个时辰统一「左 40% 文字 / 右 60% 图片」布局
    - 滚动驱动 clip-path 平行四边形裁剪（useTransform 注入）

@@ -24,6 +24,7 @@ const UpdateSchema = z.object({
   repoUrl: flexibleUrl,
   demoUrl: flexibleUrl,
   downloadUrl: flexibleUrl,
+  sourceFilePath: z.string().optional().nullable(),
   isPublic: z.boolean().optional(),
   featured: z.boolean().optional(),
   sortOrder: z.number().int().optional(),

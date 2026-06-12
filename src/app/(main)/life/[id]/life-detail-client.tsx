@@ -17,17 +17,16 @@ type LifePostData = {
 export function LifeDetailClient({
   post: initialPost,
   currentUserId,
-  isAdmin,
 }: {
   post: LifePostData;
   currentUserId?: string;
-  isAdmin: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [post, setPost] = useState(initialPost);
   const isOwner = currentUserId === post.author.id;
-  const canEdit = isOwner || isAdmin;
+  // 编辑/删除权限：仅作者本人（管理员也只管理自己的分享）
+  const canEdit = isOwner;
 
   async function handleLike() {
     if (!currentUserId) { router.push("/login"); return; }
@@ -115,11 +114,9 @@ export function LifeDetailClient({
 
         {canEdit && (
           <>
-            {isOwner && (
-              <Link href={`/life/edit/${post.id}`} className="rounded-lg border border-[rgb(var(--border))] px-4 py-2 text-sm hover:bg-[rgb(var(--muted))]">
-                编辑
-              </Link>
-            )}
+            <Link href={`/life/edit/${post.id}`} className="rounded-lg border border-[rgb(var(--border))] px-4 py-2 text-sm hover:bg-[rgb(var(--muted))]">
+              编辑
+            </Link>
             <button onClick={handleDelete} disabled={isPending} className="rounded-lg border border-red-200 px-4 py-2 text-sm text-red-500 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950">
               删除
             </button>

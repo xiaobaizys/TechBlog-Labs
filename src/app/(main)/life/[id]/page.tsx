@@ -56,7 +56,7 @@ export default async function LifeDetailPage({ params }: { params: { id: string 
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
-      <LifeDetailClient post={post} currentUserId={session?.user?.id} isAdmin={session?.user?.role === "ADMIN"} />
+      <LifeDetailClient post={post} currentUserId={session?.user?.id} />
     </div>
   );
 }

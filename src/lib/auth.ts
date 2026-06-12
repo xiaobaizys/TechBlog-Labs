@@ -50,18 +50,32 @@ const nextAuth = NextAuth({
      * JWT 回调：
      * - 首次登录时: 将 user.id / user.role 写入 token
      * - update 触发时: 从数据库刷新最新用户信息
+     * - 「记住我」未勾选时: 把 token.exp 缩短为 1 天（默认 30 天）
      */
     async jwt({ token, user, trigger }) {
       // 首次登录
       if (user) {
-        token.id = user.id;
-        token.role = (user as { role?: string }).role ?? "USER";
+        token.id = user.id
+        token.role = (user as { role?: string }).role ?? "USER"
+
+        // 「记住我」处理：未勾选时缩短 JWT 过期时间
+        //  - 勾选 → 使用 session.maxAge（30 天）
+        //  - 未勾选 → 1 天后过期
+        //   通过覆盖 token.exp 实现，NextAuth 会用它来签发 cookie 和 session.expires
+        const rememberMe = (user as { rememberMe?: boolean }).rememberMe
+        if (rememberMe === false) {
+          const oneDaySec = 24 * 60 * 60
+          token.exp = Math.floor(Date.now() / 1000) + oneDaySec
+        }
+
         // 仅 dev 打印：上线后避免泄露 token 内容
         if (process.env.NODE_ENV !== "production") {
           console.log("[auth/jwt] 首次登录写入 token:", {
             id: token.id,
             role: token.role,
-          });
+            rememberMe,
+            exp: token.exp,
+          })
         }
       }
 

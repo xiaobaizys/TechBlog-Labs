@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "@/lib/toast";
@@ -15,13 +15,14 @@ type FormData = {
   repoUrl: string;
   demoUrl: string;
   downloadUrl: string;
+  sourceFilePath: string;
   isPublic: boolean;
   featured: boolean;
 };
 
 const DEFAULT: FormData = {
   title: "", description: "", content: "", coverImage: "",
-  techStack: [], repoUrl: "", demoUrl: "", downloadUrl: "",
+  techStack: [], repoUrl: "", demoUrl: "", downloadUrl: "", sourceFilePath: "",
   isPublic: true, featured: false,
 };
 
@@ -32,6 +33,11 @@ export function ProjectForm({ initialData }: { initialData?: FormData }) {
   const [techInput, setTechInput] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [sourceUploading, setSourceUploading] = useState(false);
+  const [sourceFileName, setSourceFileName] = useState("");
+  const coverFileInputRef = useRef<HTMLInputElement>(null);
+  const sourceFileInputRef = useRef<HTMLInputElement>(null);
 
   const isEdit = !!initialData?.id;
 
@@ -44,6 +50,55 @@ export function ProjectForm({ initialData }: { initialData?: FormData }) {
     if (!t || form.techStack.includes(t)) { setTechInput(""); return; }
     setForm((p) => ({ ...p, techStack: [...p.techStack, t] }));
     setTechInput("");
+  }
+
+  async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setCoverUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        toast.error(data.message || "上传失败");
+        return;
+      }
+      update("coverImage", data.data.url);
+      toast.success("封面上传成功");
+    } catch {
+      toast.error("上传失败，请重试");
+    } finally {
+      setCoverUploading(false);
+    }
+  }
+
+  async function handleSourceUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setSourceUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload-source", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        toast.error(data.message || "上传失败");
+        return;
+      }
+      update("sourceFilePath", data.data.url);
+      setSourceFileName(file.name);
+      toast.success("源文件上传成功");
+    } catch {
+      toast.error("上传失败，请重试");
+    } finally {
+      setSourceUploading(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -72,6 +127,7 @@ export function ProjectForm({ initialData }: { initialData?: FormData }) {
             repoUrl: form.repoUrl || null,
             demoUrl: form.demoUrl || null,
             downloadUrl: form.downloadUrl || null,
+            sourceFilePath: form.sourceFilePath || null,
             content: form.content || null,
           }),
         });
@@ -85,7 +141,7 @@ export function ProjectForm({ initialData }: { initialData?: FormData }) {
         const successMsg = isEdit ? "项目已更新" : "项目已创建";
         setSuccess(successMsg);
         toast.success(successMsg);
-        if (!isEdit) setTimeout(() => router.push(`/admin/projects/edit/${data.data.id}`), 800);
+        if (!isEdit) setTimeout(() => router.push(`/projects/${data.data.slug}`), 800);
         else setTimeout(() => setSuccess(""), 2000);
       } catch {
         const msg = "网络错误";
@@ -96,7 +152,7 @@ export function ProjectForm({ initialData }: { initialData?: FormData }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
       {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400">{error}</div>}
       {success && <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400">{success}</div>}
 
@@ -114,11 +170,54 @@ export function ProjectForm({ initialData }: { initialData?: FormData }) {
           className="w-full rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 resize-y" />
       </div>
 
-      {/* 封面图 */}
+      {/* 封面图：URL 输入 + 本地上传 + 预览 */}
       <div>
-        <label className="mb-1.5 block text-sm font-medium">封面图 URL</label>
-        <input type="url" value={form.coverImage} onChange={(e) => update("coverImage", e.target.value)}
-          placeholder="https://..." className="w-full rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-4 py-2.5 text-sm outline-none focus:border-primary-500" />
+        <label className="mb-1.5 block text-sm font-medium">封面图</label>
+        <div className="flex flex-wrap gap-2">
+          <input
+            type="url"
+            value={form.coverImage}
+            onChange={(e) => update("coverImage", e.target.value)}
+            placeholder="https://example.com/image.jpg  （或点击右侧按钮上传本地图片）"
+            className="flex-1 rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+          />
+          <button
+            type="button"
+            disabled={coverUploading}
+            onClick={() => coverFileInputRef.current?.click()}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-4 py-2.5 text-sm font-medium transition-colors hover:bg-[rgb(var(--muted))] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {coverUploading ? "上传中..." : "上传本地图片"}
+          </button>
+          <input
+            ref={coverFileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            onChange={handleCoverUpload}
+            className="hidden"
+          />
+        </div>
+        <p className="mt-1 text-xs text-[rgb(var(--muted-foreground))]">
+          支持 jpg / png / webp / gif，单张不超过 5MB
+        </p>
+        {form.coverImage && (
+          <div className="mt-3 overflow-hidden rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--muted))]">
+            <div className="relative aspect-video w-full">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={form.coverImage}
+                alt="封面预览"
+                className="h-full w-full object-cover"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-2 border-t border-[rgb(var(--border))] bg-[rgb(var(--card))] px-3 py-1.5 text-xs">
+              <span className="truncate text-[rgb(var(--muted-foreground))]">{form.coverImage}</span>
+              <button type="button" onClick={() => update("coverImage", "")}
+                className="shrink-0 text-[rgb(var(--muted-foreground))] hover:text-red-500">移除</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 技术栈 */}
@@ -155,10 +254,51 @@ export function ProjectForm({ initialData }: { initialData?: FormData }) {
             className="w-full rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-4 py-2.5 text-sm outline-none focus:border-primary-500" />
         </div>
         <div>
-          <label className="mb-1.5 block text-sm font-medium">下载地址</label>
+          <label className="mb-1.5 block text-sm font-medium">下载地址（外部链接）</label>
           <input type="url" value={form.downloadUrl} onChange={(e) => update("downloadUrl", e.target.value)} placeholder="https://..."
             className="w-full rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-4 py-2.5 text-sm outline-none focus:border-primary-500" />
         </div>
+      </div>
+
+      {/* 源文件上传 */}
+      <div>
+        <label className="mb-1.5 block text-sm font-medium">源代码压缩包</label>
+        <div className="flex flex-wrap gap-2">
+          <input
+            type="text"
+            value={sourceFileName || form.sourceFilePath}
+            readOnly
+            placeholder="未选择文件"
+            className="flex-1 rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--muted))] px-4 py-2.5 text-sm outline-none cursor-not-allowed"
+          />
+          <button
+            type="button"
+            disabled={sourceUploading}
+            onClick={() => sourceFileInputRef.current?.click()}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-4 py-2.5 text-sm font-medium transition-colors hover:bg-[rgb(var(--muted))] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {sourceUploading ? "上传中..." : "选择文件"}
+          </button>
+          <input
+            ref={sourceFileInputRef}
+            type="file"
+            accept=".zip,.tar,.tar.gz,.tgz,.7z,.rar,.gz,.bz2"
+            onChange={handleSourceUpload}
+            className="hidden"
+          />
+          {form.sourceFilePath && (
+            <button
+              type="button"
+              onClick={() => { update("sourceFilePath", ""); setSourceFileName(""); }}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-[rgb(var(--card))] px-4 py-2.5 text-sm font-medium text-red-500 transition-colors hover:bg-red-50"
+            >
+              移除
+            </button>
+          )}
+        </div>
+        <p className="mt-1 text-xs text-[rgb(var(--muted-foreground))]">
+          支持 zip、tar.gz、7z、rar 等压缩包格式，单文件不超过 50MB
+        </p>
       </div>
 
       {/* 详细内容 (MDX) */}

@@ -46,6 +46,7 @@ model User {
   projects       Project[]
   comments       Comment[]
   aiQuotas       AIQuota[]
+  aiChatSessions AIChatSession[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   deletedAt      DateTime?
@@ -234,6 +235,7 @@ model Project {
   repoUrl     String?
   demoUrl     String?
   downloadUrl String?
+  sourceFilePath String?
   content     String?       @db.Text
   viewCount   Int           @default(0)
   likeCount   Int           @default(0)
@@ -310,4 +312,62 @@ model PostChunk {
 
   @@index([postId])
   @@index([postId, chunkIndex])
+}
+
+// ================================================================
+// AI 提供商配置（管理员在后台管理）
+// ================================================================
+
+model AiProvider {
+  id        String   @id @default(cuid())
+  name      String   // 显示名称，如 "DeepSeek"
+  baseUrl   String   // API 地址，如 "https://api.deepseek.com"
+  apiKey    String   // API 密钥
+  model     String   // 模型名，如 "deepseek-chat"
+  isActive  Boolean  @default(false) // 是否当前使用
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ================================================================
+// 首页背景图片管理
+// ================================================================
+
+model HomeBackground {
+  id        String   @id @default(cuid())
+  url       String   // 图片 URL 或路径
+  name      String   // 图片名称/描述
+  sortOrder Int      @default(0) // 排序
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sortOrder])
+  @@index([isActive])
+}
+
+model AIChatSession {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String         @default("新对话")
+  messages  AIChatMessage[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([userId])
+  @@index([updatedAt])
+}
+
+model AIChatMessage {
+  id        String        @id @default(cuid())
+  sessionId String
+  session   AIChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String        // "user" | "assistant"
+  content   String        @db.Text
+  sources   String?       @db.Text // JSON: [{title, slug}]
+  createdAt DateTime      @default(now())
+
+  @@index([sessionId])
+  @@index([createdAt])
 }

@@ -45,9 +45,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     if (!post.isPublic) {
+      // 私密分享只有作者本人可看（管理员也没有查看他人私密分享的权限）
       const isOwner = session?.user?.id === post.author.id;
-      const isAdminRole = session?.user?.role === "ADMIN";
-      if (!isOwner && !isAdminRole) {
+      if (!isOwner) {
         return NextResponse.json({ success: false, message: "分享不存在" }, { status: 404 });
       }
     }
@@ -79,7 +79,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (!existing) {
       return NextResponse.json({ success: false, message: "分享不存在" }, { status: 404 });
     }
-    if (existing.authorId !== session.user.id && session.user.role !== "ADMIN") {
+    // 私密分享的编辑/删除权限：仅作者本人
+    // （管理员也仅能管理自己发布的分享；如需违规内容处置，请走举报/封号流程）
+    if (existing.authorId !== session.user.id) {
       return NextResponse.json({ success: false, message: "无权限" }, { status: 403 });
     }
 
@@ -126,7 +128,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     if (!existing) {
       return NextResponse.json({ success: false, message: "分享不存在" }, { status: 404 });
     }
-    if (existing.authorId !== session.user.id && session.user.role !== "ADMIN") {
+    // 删除权限：仅作者本人（与编辑权限保持一致）
+    if (existing.authorId !== session.user.id) {
       return NextResponse.json({ success: false, message: "无权限" }, { status: 403 });
     }
 

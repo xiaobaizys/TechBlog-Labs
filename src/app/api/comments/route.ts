@@ -38,7 +38,6 @@ export async function GET(request: NextRequest) {
     // ---------- 查询顶层评论 ----------
     const where = {
       postId,
-      isApproved: true,
       parentId: null as string | null,
     };
 
@@ -51,21 +50,18 @@ export async function GET(request: NextRequest) {
         select: {
           id: true,
           content: true,
-          isApproved: true,
           parentId: true,
           createdAt: true,
           updatedAt: true,
           author: {
             select: { id: true, name: true, image: true },
           },
-          // 预加载第一层回复
+          // 预加载回复
           replies: {
-            where: { isApproved: true },
             orderBy: { createdAt: "asc" },
             select: {
               id: true,
               content: true,
-              isApproved: true,
               parentId: true,
               createdAt: true,
               updatedAt: true,
@@ -73,12 +69,10 @@ export async function GET(request: NextRequest) {
                 select: { id: true, name: true, image: true },
               },
               replies: {
-                where: { isApproved: true },
                 orderBy: { createdAt: "asc" },
                 select: {
                   id: true,
                   content: true,
-                  isApproved: true,
                   parentId: true,
                   createdAt: true,
                   updatedAt: true,
@@ -208,14 +202,14 @@ export const POST = withRateLimit(RATE_LIMITS.write, async (request: NextRequest
       }
     }
 
-    // ---------- 创建评论 ----------
+    // ---------- 创建评论（直接通过，无需审核）----------
     const comment = await prisma.comment.create({
       data: {
         content: content.trim(),
         postId,
         authorId: session.user.id,
         parentId: parentId ?? null,
-        isApproved: false,
+        isApproved: true,
       },
       select: {
         id: true,
@@ -232,7 +226,7 @@ export const POST = withRateLimit(RATE_LIMITS.write, async (request: NextRequest
     return NextResponse.json(
       {
         success: true,
-        message: "评论已提交，审核通过后显示",
+        message: "评论成功",
         data: comment,
       },
       { status: 201 }

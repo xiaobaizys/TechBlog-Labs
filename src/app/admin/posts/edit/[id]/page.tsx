@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { PostForm } from "../../post-form";
 
 type PostData = {
@@ -15,15 +16,24 @@ type PostData = {
 };
 
 async function getPost(id: string): Promise<PostData | null> {
-  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-  // 通过 admin list API 获取单篇文章
-  const res = await fetch(
-    `${baseUrl}/api/posts/admin/list?page=1&pageSize=100`,
-    { cache: "no-store" }
-  );
-  if (!res.ok) return null;
-  const { data } = await res.json();
-  return (data as PostData[]).find((p) => p.id === id) ?? null;
+  const post = await prisma.post.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      content: true,
+      excerpt: true,
+      coverImage: true,
+      status: true,
+      featured: true,
+      tags: {
+        select: { tag: { select: { id: true, name: true, slug: true } } },
+      },
+    },
+  });
+  if (!post) return null;
+  return { ...post, tags: post.tags.map((t) => t.tag) };
 }
 
 export default async function EditPostPage({

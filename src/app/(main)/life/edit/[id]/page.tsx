@@ -18,8 +18,8 @@ export default async function EditLifePostPage({ params }: { params: { id: strin
   if (!post) notFound();
 
   const isOwner = session.user.id === post.author.id;
-  const isAdminRole = session.user.role === "ADMIN";
-  if (!isOwner && !isAdminRole) redirect("/life");
+  // 编辑权限：仅作者本人（管理员也只编辑自己的分享）
+  if (!isOwner) redirect("/life");
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">

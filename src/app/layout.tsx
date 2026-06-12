@@ -1,11 +1,23 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display, JetBrains_Mono } from "next/font/google";
+import dynamic from "next/dynamic";
 import { getConfig } from "@/lib/config";
 import { Providers } from "./providers";
-import { AIChatButton } from "@/components/ai/AIChatButton";
-import { Starfield } from "@/components/ui/Starfield";
-import { Atmosphere } from "@/components/ui/Atmosphere";
 import "./globals.css";
+
+// 延迟加载装饰性/交互性组件 —— 不阻塞首屏渲染
+const Starfield = dynamic(
+  () => import("@/components/ui/Starfield").then((m) => m.Starfield),
+  { ssr: false }
+);
+const Atmosphere = dynamic(
+  () => import("@/components/ui/Atmosphere").then((m) => m.Atmosphere),
+  { ssr: false }
+);
+const AIChatButton = dynamic(
+  () => import("@/components/ai/AIChatButton").then((m) => m.AIChatButton),
+  { ssr: false }
+);
 
 const inter = Inter({
   subsets: ["latin"],

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/requireAdmin";
 import { ExternalLink, Settings } from "lucide-react";
+import { BackButton } from "@/components/admin/BackButton";
 
 /**
  * /admin 统一布局
@@ -8,7 +9,7 @@ import { ExternalLink, Settings } from "lucide-react";
  *  - requireAdmin() 在 layout 入口守卫一次，子页面就不必各自再 guard
  *  - 顶部 AdminTopBar：
  *      左：品牌（Admin Console）— 点击回 /admin
- *      右：返回首页（外部链接图标）— 新标签页打开 /，方便对照预览
+ *      右：返回上一页（走 history.back()） + 跳前台（新标签打开 /）
  *  - 主体区域：max-w-6xl + 内边距，子页面不用再关心外壳
  *
  *  之所以要新开标签：
@@ -64,8 +65,9 @@ function AdminTopBar() {
           </span>
         </Link>
 
-        {/* 右：跳前台 + 当前时间标记 */}
+        {/* 右：返回上一页 + 跳前台 + 当前时间标记 */}
         <div className="flex items-center gap-2">
+          <BackButton />
           <a
             href="/"
             target="_blank"

@@ -4,13 +4,20 @@ import { LifeCard, type LifePostData } from "@/components/life/LifeCard";
 import { Pagination } from "@/components/ui/Pagination";
 import Link from "next/link";
 
-async function getUserPosts(page: number): Promise<{
+/**
+ * 获取「当前用户」的分享列表
+ *
+ * 必须用 /api/life-posts/user/:userId 而不是 /api/life-posts：
+ *  - 前者只查当前用户的帖子（包含 isPublic=false 的私密分享）
+ *  - 后者返回全站所有公开的帖子，pagination.total 是全站统计
+ */
+async function getMyPosts(userId: string, page: number): Promise<{
   data: LifePostData[];
   pagination: { page: number; totalPages: number; total: number };
 }> {
   const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
   const res = await fetch(
-    `${baseUrl}/api/life-posts?page=${page}&pageSize=10`,
+    `${baseUrl}/api/life-posts/user/${userId}?page=${page}&pageSize=10`,
     { cache: "no-store" }
   );
   if (!res.ok) return { data: [], pagination: { page: 1, totalPages: 0, total: 0 } };
@@ -26,10 +33,7 @@ export default async function ProfileLifePage({
   if (!session?.user) redirect("/login");
 
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10));
-  const { data: posts, pagination } = await getUserPosts(page);
-
-  // Filter to current user's posts (API returns all public; for private, would need user-specific endpoint)
-  // For now showing a link to user-specific posts
+  const { data: posts, pagination } = await getMyPosts(session.user.id, page);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
@@ -43,14 +47,11 @@ export default async function ProfileLifePage({
         <Link href="/life/new" className="btn-shimmer text-sm">发布分享</Link>
       </div>
 
-      {/* 筛选用户自己的帖子 */}
       {posts.length > 0 ? (
         <div className="space-y-4">
-          {posts
-            .filter((p) => p.author.id === session.user.id)
-            .map((post) => (
-              <LifeCard key={post.id} post={post} />
-            ))}
+          {posts.map((post) => (
+            <LifeCard key={post.id} post={post} />
+          ))}
         </div>
       ) : (
         <div className="py-20 text-center">

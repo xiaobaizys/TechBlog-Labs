@@ -54,3 +54,6 @@ dev-stdout.log
 
 # local scratch docs (not part of project)
 nextjs-app-router-guide.md
+
+# uploaded media (images / source files)
+/public/uploads/

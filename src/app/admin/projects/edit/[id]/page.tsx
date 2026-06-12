@@ -10,7 +10,7 @@ async function getProject(id: string) {
     select: {
       id: true, title: true, slug: true, description: true,
       content: true, coverImage: true, techStack: true,
-      repoUrl: true, demoUrl: true, downloadUrl: true,
+      repoUrl: true, demoUrl: true, downloadUrl: true, sourceFilePath: true,
       isPublic: true, featured: true, sortOrder: true,
     },
   });
@@ -37,6 +37,7 @@ export default async function EditProjectPage({ params }: { params: { id: string
           repoUrl: project.repoUrl ?? "",
           demoUrl: project.demoUrl ?? "",
           downloadUrl: project.downloadUrl ?? "",
+          sourceFilePath: project.sourceFilePath ?? "",
           isPublic: project.isPublic,
           featured: project.featured,
         }}

@@ -10,10 +10,18 @@ import { z } from "zod";
 // Schema
 // ============================================================
 
-// 封面图：空串（用户没填）→ 归一为 null，避免 Zod 把 "" 当成非法 URL 拒掉
+// 封面图验证：空串 → null；相对路径（/uploads/...）或绝对 URL 均可
 const CoverImageSchema = z.preprocess(
   (v) => (typeof v === "string" && v.trim() === "" ? null : v),
-  z.string().url("封面图 URL 格式不正确").nullable().optional()
+  z
+    .string()
+    .min(1)
+    .refine(
+      (v) => v.startsWith("/") || /^https?:\/\//i.test(v),
+      "封面图必须是相对路径（/uploads/...）或完整 URL"
+    )
+    .nullable()
+    .optional()
 );
 
 const CreatePostSchema = z.object({

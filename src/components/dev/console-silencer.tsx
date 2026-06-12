@@ -36,7 +36,7 @@ const NOISE_PATTERNS: RegExp[] = [
  * 把任意参数（string / Error / object）归一成可正则匹配的文本
  */
 function toText(arg: unknown): string {
-  if (arg == null) return "";
+  if (arg == null) return String(arg); // null / undefined → "null" / "undefined"，避免后面 .stack 崩溃
   if (typeof arg === "string") return arg;
   if (arg instanceof Error) {
     return `${arg.name}: ${arg.message}\n${arg.stack ?? ""}`;

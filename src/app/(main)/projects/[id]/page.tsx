@@ -29,6 +29,7 @@ type ProjectData = {
   id: string; title: string; slug: string; description: string;
   content: string | null; coverImage: string | null; techStack: string[];
   repoUrl: string | null; demoUrl: string | null; downloadUrl: string | null;
+  sourceFilePath: string | null;
   viewCount: number; likeCount: number; isPublic: boolean; isLiked: boolean;
   featured: boolean;
   createdAt: string; updatedAt: string;
@@ -47,7 +48,7 @@ async function getProject(idOrSlug: string, userId?: string): Promise<ProjectDat
       where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
       select: {
         id: true, title: true, slug: true, description: true, content: true,
-        coverImage: true, techStack: true, repoUrl: true, demoUrl: true, downloadUrl: true,
+        coverImage: true, techStack: true, repoUrl: true, demoUrl: true, downloadUrl: true, sourceFilePath: true,
         viewCount: true, likeCount: true, isPublic: true, featured: true,
         createdAt: true, updatedAt: true,
         author: { select: { id: true, name: true, image: true } },
@@ -289,7 +290,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
                   title="查看源代码仓库"
                 >
                   <GithubIcon className="h-4 w-4" />
-                  <span>Code</span>
+                  <span>源代码</span>
                 </a>
               )}
               {project.demoUrl && (
@@ -301,7 +302,17 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
                   title="在线演示"
                 >
                   <Globe className="h-4 w-4" />
-                  <span>Demo</span>
+                  <span>演示</span>
+                </a>
+              )}
+              {project.sourceFilePath && (
+                <a
+                  href={`/api/projects/${project.id}/download`}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--background))] px-3 py-1.5 text-sm font-medium transition-all hover:border-amber hover:text-amber-bright"
+                  title="下载源代码压缩包"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>源码下载</span>
                 </a>
               )}
               {project.downloadUrl && (
@@ -313,7 +324,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
                   title="下载源码包"
                 >
                   <Download className="h-4 w-4" />
-                  <span>Download</span>
+                  <span>外部下载</span>
                 </a>
               )}
               <div className="h-6 w-px bg-[rgb(var(--border))] mx-0.5 hidden sm:block" />
@@ -531,7 +542,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
           )}
 
           {/* 链接 */}
-          {(project.repoUrl || project.demoUrl || project.downloadUrl) && (
+          {(project.repoUrl || project.demoUrl || project.downloadUrl || project.sourceFilePath) && (
             <SidebarCard title="链接">
               <ul className="space-y-1">
                 {project.repoUrl && (
@@ -546,6 +557,13 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
                     href={project.demoUrl}
                     icon={<Globe className="h-4 w-4" />}
                     label="在线演示"
+                  />
+                )}
+                {project.sourceFilePath && (
+                  <SidebarLinkItem
+                    href={`/api/projects/${project.id}/download`}
+                    icon={<Download className="h-4 w-4" />}
+                    label="源代码压缩包"
                   />
                 )}
                 {project.downloadUrl && (

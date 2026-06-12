@@ -17,10 +17,10 @@ export async function GET(
     const pageSize = Math.min(30, Math.max(1, parseInt(searchParams.get("pageSize") ?? "10", 10)));
 
     const isSelf = session?.user?.id === userId;
-    const isAdminRole = session?.user?.role === "ADMIN";
 
+    // 私密分享仅作者本人可见（管理员查看他人主页时也只能看到公开的）
     const where: Record<string, unknown> = { authorId: userId };
-    if (!isSelf && !isAdminRole) {
+    if (!isSelf) {
       where.isPublic = true;
     }
 

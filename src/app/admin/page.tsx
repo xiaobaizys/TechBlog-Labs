@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { requireAdmin } from "@/lib/auth/requireAdmin";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
@@ -13,6 +14,8 @@ import Link from "next/link";
  *  与 /admin/dashboard 的区别：
  *  - /admin/dashboard：纯数据可视化（图表 + 趋势）
  *  - /admin（本页）：导航 + 概览，作为所有 admin 子路由的总入口
+ *
+ *  优化：统计区块用 Suspense 包裹做流式加载，页面骨架先渲染。
  */
 export const dynamic = "force-dynamic";
 
@@ -50,12 +53,10 @@ async function getStats(): Promise<DashStats> {
 
 export default async function AdminIndexPage() {
   await requireAdmin();
-  const stats = await getStats();
-  const now = new Date().toLocaleString("zh-CN", { hour12: false });
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:py-12">
-      {/* 头部 */}
+      {/* 头部（立刻渲染，不依赖数据库） */}
       <header className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-amber-bright/80 font-mono mb-2">
@@ -69,11 +70,41 @@ export default async function AdminIndexPage() {
           </p>
         </div>
         <div className="text-xs text-[rgb(var(--muted-foreground))] sm:text-right">
-          <div>{now}</div>
+          <div>{new Date().toLocaleString("zh-CN", { hour12: false })}</div>
           <div className="mt-0.5">已登录 · 管理员权限</div>
         </div>
       </header>
 
+      {/* 统计区块 + 快捷入口（流式加载） */}
+      <Suspense fallback={<AdminSkeleton />}>
+        <AdminContent />
+      </Suspense>
+
+      {/* 系统信息（立刻渲染） */}
+      <section className="mt-8">
+        <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-[rgb(var(--muted-foreground))]">
+          系统信息
+        </h2>
+        <div className="theme-card grid gap-2 p-5 text-sm sm:grid-cols-2">
+          <Row label="Next.js 模式" value="App Router · Server Components" />
+          <Row label="数据库" value="Prisma · PostgreSQL" />
+          <Row label="认证" value="NextAuth v5 (Credentials + GitHub)" />
+          <Row label="数据刷新" value="force-dynamic（每次请求重新查）" />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/* ============================================================
+ *  AdminContent · 数据驱动的区块
+ * ============================================================ */
+
+async function AdminContent() {
+  const stats = await getStats();
+
+  return (
+    <>
       {/* 4 个数据卡 */}
       <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatTile label="博客文章" value={stats.totalPosts} accent="amber" href="/admin/posts" />
@@ -127,6 +158,18 @@ export default async function AdminIndexPage() {
             icon="👥"
           />
           <AdminLink
+            href="/admin/ai-keys"
+            title="AI 提供商"
+            desc="管理 AI 助手 API 密钥与提供商切换"
+            icon="🤖"
+          />
+          <AdminLink
+            href="/admin/home-backgrounds"
+            title="首页背景"
+            desc="管理首页 Hero 区域背景图片"
+            icon="🖼️"
+          />
+          <AdminLink
             href="/admin/config"
             title="站点配置"
             desc="网站标题、描述、社交链接、SEO 等"
@@ -134,20 +177,49 @@ export default async function AdminIndexPage() {
           />
         </div>
       </section>
+    </>
+  );
+}
 
-      {/* 系统信息 */}
+/* ============================================================
+ *  AdminSkeleton · 加载骨架
+ * ============================================================ */
+
+function AdminSkeleton() {
+  return (
+    <>
+      {/* 数据卡骨架 */}
+      <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div
+            key={i}
+            className="theme-card block p-5 animate-pulse"
+          >
+            <div className="h-3 w-16 bg-[rgb(var(--muted-foreground))/20 rounded" />
+            <div className="mt-3 h-8 w-20 bg-[rgb(var(--muted-foreground))/20 rounded" />
+          </div>
+        ))}
+      </section>
+
+      {/* 快捷入口骨架 */}
       <section className="mt-8">
-        <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-[rgb(var(--muted-foreground))]">
-          系统信息
-        </h2>
-        <div className="theme-card grid gap-2 p-5 text-sm sm:grid-cols-2">
-          <Row label="Next.js 模式" value="App Router · Server Components" />
-          <Row label="数据库" value="Prisma · PostgreSQL" />
-          <Row label="认证" value="NextAuth v5 (Credentials + GitHub)" />
-          <Row label="数据刷新" value="force-dynamic（每次请求重新查）" />
+        <div className="mb-3 h-4 w-20 bg-[rgb(var(--muted-foreground))/20 rounded" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div
+              key={i}
+              className="theme-card flex items-start gap-4 p-5 animate-pulse"
+            >
+              <div className="h-10 w-10 flex-shrink-0 rounded-lg bg-[rgb(var(--muted-foreground))/20" />
+              <div className="flex-1">
+                <div className="h-4 w-24 bg-[rgb(var(--muted-foreground))/20 rounded" />
+                <div className="mt-2 h-3 w-40 bg-[rgb(var(--muted-foreground))/20 rounded" />
+              </div>
+            </div>
+          ))}
         </div>
       </section>
-    </div>
+    </>
   );
 }
 

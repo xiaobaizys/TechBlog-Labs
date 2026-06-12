@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { HighlightText } from "@/components/search/HighlightText";
 
 export type ProjectCardData = {
   id: string;
@@ -15,11 +16,13 @@ export type ProjectCardData = {
   featured: boolean;
   createdAt: string;
   author: { id: string; name: string | null; image: string | null };
+  // 可选：搜索高亮片段
+  highlight?: { text: string; hit: boolean }[] | null;
 };
 
-export function ProjectCard({ project }: { project: ProjectCardData }) {
+export function ProjectCard({ project, showHighlight = false }: { project: ProjectCardData; showHighlight?: boolean }) {
   return (
-    <article className="theme-card-hover group flex flex-col overflow-hidden h-full">
+    <article className="theme-card-hover group flex flex-col overflow-hidden h-full [content-visibility:auto]">
       {/* 封面图 */}
       {project.coverImage && (
         <Link href={`/projects/${project.slug}`} className="block overflow-hidden">
@@ -46,13 +49,21 @@ export function ProjectCard({ project }: { project: ProjectCardData }) {
         {/* 标题 */}
         <Link href={`/projects/${project.slug}`} className="group/title">
           <h3 className="text-lg font-serif font-medium tracking-tight transition-colors group-hover/title:text-amber-bright">
-            {project.title}
+            {showHighlight ? (
+              <HighlightText fragments={project.highlight} fallback={project.title} />
+            ) : (
+              project.title
+            )}
           </h3>
         </Link>
 
         {/* 描述 */}
         <p className="mt-2 line-clamp-2 flex-1 text-sm leading-relaxed text-[rgb(var(--muted-foreground))]">
-          {project.description}
+          {showHighlight ? (
+            <HighlightText fragments={project.highlight} fallback={project.description} />
+          ) : (
+            project.description
+          )}
         </p>
 
         {/* 技术栈 */}

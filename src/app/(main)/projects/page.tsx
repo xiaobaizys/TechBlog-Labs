@@ -1,9 +1,16 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { unstable_cache } from "next/cache";
-import { ProjectListClient } from "./project-list-client";
 import type { ProjectCardData } from "@/components/project/ProjectCard";
 import { BuildingHero } from "@/components/shared/BuildingSection";
+import {
+  buildProjectKeywordWhere,
+  buildProjectTitleWhere,
+  safePage,
+  tokenize,
+} from "@/lib/search";
+import { ProjectSearchView } from "@/components/project/ProjectSearchView";
+import type { SearchCategory } from "@/components/search/SearchBar";
 
 type TechStack = { name: string; count: number };
 
@@ -56,6 +63,7 @@ async function getProjects(page: number, tech?: string): Promise<{
         ...p,
         description: p.description ?? "",
         createdAt: p.createdAt.toISOString(),
+        highlight: null as { text: string; hit: boolean }[] | null,
       }));
       return { data, total };
     },
@@ -67,6 +75,69 @@ async function getProjects(page: number, tech?: string): Promise<{
   return {
     data,
     pagination: { page, totalPages: Math.max(1, Math.ceil(total / 6)), total },
+  };
+}
+
+/**
+ * searchProjects · 服务端搜索（与 /api/search/projects 等价但省去 HTTP 往返）
+ *  - 关键词全文（title / description / content）+ tech 过滤 + title 过滤
+ *  - 返回带 highlight 片段的 ProjectCardData[]
+ */
+async function searchProjects(
+  q: string | null,
+  tech: string | null,
+  title: string | null,
+  page: number
+): Promise<{
+  data: ProjectCardData[];
+  pagination: { page: number; totalPages: number; total: number };
+  tookMs: number;
+}> {
+  const t0 = Date.now();
+  const tokens = tokenize(q);
+  const where = {
+    isPublic: true,
+    ...(tech ? { techStack: { has: tech } } : {}),
+    ...(title ? buildProjectTitleWhere(title) : {}),
+    ...(tokens.length > 0 ? buildProjectKeywordWhere(tokens) : {}),
+  };
+
+  const [projects, total] = await Promise.all([
+    prisma.project.findMany({
+      where,
+      orderBy: [{ featured: "desc" }, { sortOrder: "asc" }, { createdAt: "desc" }],
+      skip: (page - 1) * 6,
+      take: 6,
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        description: true,
+        coverImage: true,
+        techStack: true,
+        repoUrl: true,
+        demoUrl: true,
+        viewCount: true,
+        likeCount: true,
+        featured: true,
+        createdAt: true,
+        author: { select: { id: true, name: true, image: true } },
+      },
+    }),
+    prisma.project.count({ where }),
+  ]);
+
+  const data = projects.map((p) => ({
+    ...p,
+    description: p.description ?? "",
+    createdAt: p.createdAt.toISOString(),
+    highlight: buildHighlight(p.description ?? "", p.title, tokens),
+  }));
+
+  return {
+    data,
+    pagination: { page, totalPages: Math.max(1, Math.ceil(total / 6)), total },
+    tookMs: Date.now() - t0,
   };
 }
 
@@ -117,30 +188,100 @@ export const metadata = {
 export default async function ProjectsPage({
   searchParams,
 }: {
-  searchParams: { page?: string; tech?: string };
+  searchParams: { page?: string; tech?: string; q?: string; title?: string };
 }) {
   const session = await auth();
-  const isAdmin = session?.user?.role === "ADMIN";
-  const page = Math.max(1, parseInt(searchParams.page ?? "1"));
-  const tech = searchParams.tech;
+  void session; // 预留：未来可能给 ADMIN 显示「私密项目」开关
+  const page = safePage(searchParams.page ?? "1", 1);
+  const tech = (searchParams.tech ?? "").trim();
+  const q = (searchParams.q ?? "").trim();
+  const title = (searchParams.title ?? "").trim();
+  const isSearch = q.length > 0 || tech.length > 0 || title.length > 0;
 
-  const [{ data: projects, pagination }, techStacks] = await Promise.all([
-    getProjects(page, tech),
+  const [dataBundle, techStacks] = await Promise.all([
+    isSearch
+      ? searchProjects(q || null, tech || null, title || null, page).then((r) => ({
+          ...r,
+          pageSize: 6,
+        }))
+      : getProjects(page, tech || undefined).then((r) => ({
+          ...r,
+          pageSize: 6,
+          tookMs: 0,
+        })),
     getTechStacks(),
   ]);
+
+  // 搜索栏分类下拉
+  const categories: SearchCategory[] = techStacks.map((t) => ({
+    value: t.name,
+    label: t.name,
+    count: t.count,
+  }));
 
   return (
     <div className="mx-auto max-w-6xl px-5 md:px-10 lg:px-20 py-16">
       {/* 页面标题（从首页"开源项目"区块迁入） */}
-      <BuildingHero totalCount={pagination.total} activeTech={tech} />
+      <BuildingHero totalCount={dataBundle.pagination.total} activeTech={tech} />
 
-      <ProjectListClient
-        initialProjects={projects}
-        initialPage={page}
-        initialTotalPages={pagination.totalPages}
-        techStacks={techStacks}
-        activeTech={tech ?? ""}
+      <ProjectSearchView
+        projects={dataBundle.data}
+        pagination={{ ...dataBundle.pagination, pageSize: dataBundle.pageSize }}
+        techStacks={categories}
+        activeQuery={q}
+        activeTech={tech}
+        tookMs={dataBundle.tookMs}
       />
     </div>
   );
+}
+
+// ============================================================
+// 与 /api/search/projects 同步的 highlight 计算
+// ============================================================
+function buildHighlight(
+  source: string,
+  title: string,
+  tokens: string[]
+): { text: string; hit: boolean }[] | null {
+  if (tokens.length === 0) return null;
+  const text = source || title;
+  if (!text) return null;
+  const lc = text.toLowerCase();
+  let firstIdx = -1;
+  for (const t of tokens) {
+    const i = lc.indexOf(t.toLowerCase());
+    if (i >= 0 && (firstIdx === -1 || i < firstIdx)) firstIdx = i;
+  }
+  if (firstIdx === -1) {
+    return [{ text: text.slice(0, 160), hit: false }];
+  }
+  const start = Math.max(0, firstIdx - 40);
+  const end = Math.min(text.length, firstIdx + 80);
+  const slice =
+    (start > 0 ? "…" : "") + text.slice(start, end) + (end < text.length ? "…" : "");
+
+  const fragments: { text: string; hit: boolean }[] = [];
+  const lcSlice = slice.toLowerCase();
+  let cursor = 0;
+  while (cursor < slice.length) {
+    let nextHit = -1;
+    let nextToken = "";
+    for (const t of tokens) {
+      const idx = lcSlice.indexOf(t.toLowerCase(), cursor);
+      if (idx >= 0 && (nextHit === -1 || idx < nextHit)) {
+        nextHit = idx;
+        nextToken = t;
+      }
+    }
+    if (nextHit === -1) {
+      fragments.push({ text: slice.slice(cursor), hit: false });
+      break;
+    }
+    if (nextHit > cursor) fragments.push({ text: slice.slice(cursor, nextHit), hit: false });
+    const hitEnd = nextHit + nextToken.length;
+    fragments.push({ text: slice.slice(nextHit, hitEnd), hit: true });
+    cursor = hitEnd;
+  }
+  return fragments;
 }

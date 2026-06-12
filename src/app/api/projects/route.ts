@@ -25,6 +25,7 @@ const CreateProjectSchema = z.object({
   repoUrl: flexibleUrl,
   demoUrl: flexibleUrl,
   downloadUrl: flexibleUrl,
+  sourceFilePath: z.string().optional().nullable(),
   isPublic: z.boolean().optional().default(true),
   featured: z.boolean().optional().default(false),
 });
@@ -102,6 +103,7 @@ export async function POST(request: NextRequest) {
         repoUrl: parsed.data.repoUrl ?? null,
         demoUrl: parsed.data.demoUrl ?? null,
         downloadUrl: parsed.data.downloadUrl ?? null,
+        sourceFilePath: parsed.data.sourceFilePath ?? null,
         content: parsed.data.content ?? null,
         authorId: session.user.id,
       },

@@ -63,8 +63,8 @@ export function CommentForm({
         }
 
         setContent("");
-        setSuccess("评论已提交，审核通过后显示");
-        toast.success("评论已提交，审核通过后显示");
+        setSuccess("评论成功");
+        toast.success("评论成功");
 
         setTimeout(() => {
           setSuccess("");
