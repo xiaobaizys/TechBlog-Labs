@@ -479,6 +479,11 @@
   -webkit-user-drag: none;
 }
 
+/* 兜底渐变色：当数据库没有背景图片时使用 */
+.vitalog-hero-intro__bg-fallback {
+  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+}
+
 /* 暗化蒙版：顶部加深（适配 sticky topbar）+ 左上加深 + 底部加深，保证文字可读 */
 .vitalog-hero-intro__bg-veil {
   position: absolute;

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
  */
 export async function GET() {
   try {
+    // 检查 HomeBackground 表是否存在
     const backgrounds = await prisma.homeBackground.findMany({
       where: { isActive: true },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
@@ -15,6 +16,10 @@ export async function GET() {
     return NextResponse.json({ success: true, data: backgrounds });
   } catch (error) {
     console.error("[GET /api/home-backgrounds]", error);
-    return NextResponse.json({ success: false, message: "获取失败" }, { status: 500 });
+    const message =
+      error instanceof Error && error.message.includes("does not exist")
+        ? "数据库未初始化，请运行 npx prisma db push"
+        : "获取背景图片失败";
+    return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }

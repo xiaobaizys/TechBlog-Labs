@@ -22,13 +22,7 @@ import { UserAvatar } from '@/components/user/UserAvatar'
 export function HeroIntro() {
   const ref = useRef<HTMLElement>(null)
   const [bgIndex, setBgIndex] = useState(0)
-  const [heroBgs, setHeroBgs] = useState<string[]>([
-    // 默认回退图（前端硬编码）
-    '/image/background%20(1).png',
-    '/image/background%20(2).jpg',
-    '/image/background%20(3).jpg',
-    '/image/background%20(4).jpg',
-  ])
+  const [heroBgs, setHeroBgs] = useState<string[]>([])
   const { data: session } = useSession()
   const user = session?.user
   const { scrollYProgress } = useScroll({
@@ -87,6 +81,7 @@ export function HeroIntro() {
   }
 
   function switchCover() {
+    if (heroBgs.length === 0) return
     setBgIndex((i) => {
       const next = (i + 1) % heroBgs.length
       prefetchNext(next)
@@ -96,11 +91,15 @@ export function HeroIntro() {
 
   return (
     <motion.section ref={ref} className="vitalog-hero-intro" aria-label="开场">
-      {/* 全屏背景图：4 张可切，AnimatePresence 做交叉淡入 */}
+      {/* 全屏背景：数据库图片 / 渐变色兜底 */}
       <motion.div className="vitalog-hero-intro__bg" style={{ scale: bgScale, rotate: bgRotate, y: bgY }} aria-hidden>
-        <AnimatePresence initial={false}>
-          <motion.img key={bgIndex} src={heroBgs[bgIndex]} alt="" className="vitalog-hero-intro__bg-img" initial={{ opacity: 0, scale: 1.05 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7, ease: [0.22, 0.61, 0.36, 1] }} />
-        </AnimatePresence>
+        {heroBgs.length > 0 ? (
+          <AnimatePresence initial={false}>
+            <motion.img key={bgIndex} src={heroBgs[bgIndex]} alt="" className="vitalog-hero-intro__bg-img" initial={{ opacity: 0, scale: 1.05 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7, ease: [0.22, 0.61, 0.36, 1] }} />
+          </AnimatePresence>
+        ) : (
+          <div className="vitalog-hero-intro__bg-img vitalog-hero-intro__bg-fallback" />
+        )}
         {/* 暗化蒙版：保证左上文清晰可读 */}
         <div className="vitalog-hero-intro__bg-veil" />
       </motion.div>
