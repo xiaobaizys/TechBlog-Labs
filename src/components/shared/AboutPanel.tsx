@@ -127,7 +127,7 @@ export function AboutPanel({
           </p>
 
           {/* 技能标签 */}
-          <div className="mt-6 flex flex-wrap gap-2">
+          <div className="mt-6 flex flex-wrap gap-2 max-md:justify-center">
             {SKILLS.map((skill) => (
               <span
                 key={skill}

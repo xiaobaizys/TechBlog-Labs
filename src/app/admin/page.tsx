@@ -124,7 +124,7 @@ async function AdminContent() {
         <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-[rgb(var(--muted-foreground))]">
           快捷入口
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           <AdminLink
             href="/admin/dashboard"
             title="仪表盘"

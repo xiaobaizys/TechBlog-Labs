@@ -60,8 +60,24 @@ function createClient(): Redis {
 }
 
 // 在开发热重载时复用同一个 client，避免连接泄漏
+// 但必须检测僵尸连接——HMR 会让旧 client 的 TCP stream 回收，
+// 此时 globalThis 的引用还在，status 却是 "end"/"close"。
 function getClient(): Redis | null {
-  if (globalThis.__redisClient !== undefined) return globalThis.__redisClient;
+  const existing = globalThis.__redisClient;
+  if (existing !== undefined && existing !== null) {
+    // 健康检查：status 为 "connecting" | "connect" | "ready" 才复用
+    const status = existing.status;
+    if (status === 'connecting' || status === 'connect' || status === 'ready') {
+      return existing;
+    }
+    // 僵尸连接：清理并重建
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[redis] 检测到僵尸连接 (status=%s)，重建客户端', status);
+    }
+    existing.disconnect();
+    globalThis.__redisClient = undefined;
+    globalThis.__redisReady = undefined;
+  }
   globalThis.__redisClient = createClient();
   return globalThis.__redisClient;
 }

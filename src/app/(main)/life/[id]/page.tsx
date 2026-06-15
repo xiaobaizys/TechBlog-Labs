@@ -11,7 +11,7 @@ type LifePostData = {
 };
 
 async function getLifePost(id: string): Promise<LifePostData | null> {
-  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const baseUrl = process.env.NEXTAUTH_URL || "http://117.72.12.223";
   const res = await fetch(`${baseUrl}/api/life-posts/${id}`, { cache: "no-store" });
   if (!res.ok) return null;
   const json = await res.json();

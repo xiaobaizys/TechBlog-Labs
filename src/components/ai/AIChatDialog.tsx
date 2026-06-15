@@ -497,13 +497,28 @@ export function AIChatDialog({ onClose }: { onClose: () => void }) {
   const limit = quota?.limit ?? (isLoggedIn ? 50 : 10);
   const remaining = quota?.remaining ?? limit;
 
+  // 移动端检测
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   /* ============================================================
      渲染
      ============================================================ */
   return (
-    <div className="flex h-[560px] max-h-[78vh] flex-col overflow-hidden rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] shadow-soft-lg">
+    <div
+      className={`flex flex-col overflow-hidden border border-[rgb(var(--border))] bg-[rgb(var(--card))] shadow-soft-lg ${
+        isMobile
+          ? "fixed inset-0 z-[9999] rounded-none h-[100dvh]"
+          : "h-[560px] max-h-[78vh] rounded-2xl"
+      }`}
+    >
       {/* ===== 头部：渐变 + 博客小精灵 ===== */}
-      <div className="relative bg-gradient-to-br from-amber/20 via-amber-bright/15 to-pink-300/10 px-4 pb-3 pt-3.5">
+      <div className="relative shrink-0 bg-gradient-to-br from-amber/20 via-amber-bright/15 to-pink-300/10 px-4 pb-3 pt-3.5">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-amber to-amber-bright text-night shadow-amber">
@@ -550,7 +565,9 @@ export function AIChatDialog({ onClose }: { onClose: () => void }) {
             <button
               onClick={onClose}
               aria-label="关闭"
-              className="rounded-lg p-1.5 text-[rgb(var(--muted-foreground))] hover:bg-[rgb(var(--background))]/60"
+              className={`rounded-lg p-1.5 text-[rgb(var(--muted-foreground))] hover:bg-[rgb(var(--background))]/60 ${
+                isMobile ? "min-h-[44px] min-w-[44px] flex items-center justify-center" : ""
+              }`}
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -618,8 +635,8 @@ export function AIChatDialog({ onClose }: { onClose: () => void }) {
       {/* ===== 内容区 ===== */}
       {tab === "chat" ? (
         <div className="flex flex-1 overflow-hidden">
-          {/* 会话侧边栏 */}
-          {showSessions && isLoggedIn && (
+          {/* 会话侧边栏 — 移动端隐藏 */}
+          {showSessions && isLoggedIn && !isMobile && (
             <div className="w-44 shrink-0 overflow-y-auto border-r border-[rgb(var(--border))] bg-[rgb(var(--background))]/30 p-2">
               {loadingHistory ? (
                 <div className="py-4 text-center text-[10px] text-[rgb(var(--muted-foreground))]">加载中...</div>
@@ -720,7 +737,11 @@ export function AIChatDialog({ onClose }: { onClose: () => void }) {
           </div>
 
           {/* 输入框 */}
-          <div className="border-t border-[rgb(var(--border))] bg-[rgb(var(--card))] p-3">
+          <div
+            className={`border-t border-[rgb(var(--border))] bg-[rgb(var(--card))] p-3 ${
+              isMobile ? "pb-[max(12px,env(safe-area-inset-bottom,12px))]" : ""
+            }`}
+          >
             <div className="flex gap-2">
               <input
                 ref={inputRef}

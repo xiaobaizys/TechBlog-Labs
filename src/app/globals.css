@@ -5,13 +5,13 @@
 @layer base {
   :root {
     /* === VitaLog 夜色主题静态色值（与 tailwind.config 保持一致）=== */
-    --night: #1A1A1F;
-    --slate: #2C2C32;
-    --amber: #F2A65A;
-    --amber-bright: #FFB86C;
-    --starlight: #FFFFFF;
+    --night: #1a1a1f;
+    --slate: #2c2c32;
+    --amber: #f2a65a;
+    --amber-bright: #ffb86c;
+    --starlight: #ffffff;
     --text-dim: rgba(240, 240, 240, 0.62);
-    --forest: #0F0F14;
+    --forest: #0f0f14;
 
     /* === 主题感知 CSS 变量 === */
     /* 浅色主题（默认） */
@@ -32,23 +32,23 @@
     --header-bg: 255 255 255;
 
     /* === 十二时辰配色（节气四时） === */
-    --c-dawn: #C8956D;
+    --c-dawn: #c8956d;
     /* 暖陶 - 晨 */
-    --c-noon: #D4A574;
+    --c-noon: #d4a574;
     /* 麦黄 - 午 */
-    --c-dusk: #B07A52;
+    --c-dusk: #b07a52;
     /* 深陶 - 暮 */
-    --c-night: #6B7CA8;
+    --c-night: #6b7ca8;
     /* 月色蓝 - 夜 */
-    --c-nature: #7A8B6F;
+    --c-nature: #7a8b6f;
     /* 苔绿 */
-    --c-sky: #8FA8B2;
+    --c-sky: #8fa8b2;
     /* 雾蓝 */
 
     /* 字体 */
-    --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
-    --font-serif: "Playfair Display", "Noto Serif SC", Georgia, serif;
-    --font-mono: "JetBrains Mono", ui-monospace, monospace;
+    --font-sans: 'Inter', 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+    --font-serif: 'Playfair Display', 'Noto Serif SC', Georgia, serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   }
 
   .dark {
@@ -84,7 +84,9 @@
     @apply antialiased transition-colors duration-300;
     color: rgb(var(--foreground));
     font-family: var(--font-sans);
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
   }
 
   /* 滚动条美化：随主题变化 */
@@ -114,7 +116,6 @@
 }
 
 @layer components {
-
   /* 博客文章样式 */
   .prose-custom {
     @apply max-w-none;
@@ -134,6 +135,15 @@
 
   .prose-custom p {
     @apply leading-7 text-[rgb(var(--foreground))] my-4;
+    text-indent: 2em;
+  }
+
+  /* 段落首行不缩进：紧随标题的段落、列表内的段落 */
+  .prose-custom h1 + p,
+  .prose-custom h2 + p,
+  .prose-custom h3 + p,
+  .prose-custom li p {
+    text-indent: 0;
   }
 
   .prose-custom a {
@@ -145,7 +155,12 @@
   }
 
   .prose-custom pre {
-    @apply my-6 overflow-x-auto rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--muted))] p-4;
+    @apply my-6 overflow-x-auto rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--muted))] p-4 relative;
+  }
+
+  .prose-custom pre::before {
+    content: attr(data-language);
+    @apply absolute top-0 right-0 px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-[rgb(var(--muted-foreground))] opacity-50;
   }
 
   .prose-custom pre code {
@@ -153,7 +168,25 @@
   }
 
   .prose-custom blockquote {
-    @apply mt-6 border-l-4 border-primary-500 pl-6 italic text-[rgb(var(--muted-foreground))];
+    @apply mt-6 pl-6 italic text-[rgb(var(--muted-foreground))];
+    border-left: 2px solid rgb(var(--border));
+    position: relative;
+    background: linear-gradient(90deg, rgba(242,166,90,0.06) 0%, transparent 100%);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px 12px 20px;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .prose-custom blockquote::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--c-dawn, #f2a65a);
+    border-radius: 3px 0 0 3px;
   }
 
   .prose-custom ul {
@@ -169,7 +202,26 @@
   }
 
   .prose-custom hr {
-    @apply my-8 border-[rgb(var(--border))];
+    @apply my-10 border-0 relative;
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgb(var(--border)) 20%,
+      rgb(var(--muted-foreground)/0.3) 50%,
+      rgb(var(--border)) 80%,
+      transparent 100%);
+  }
+
+  .prose-custom hr::after {
+    content: '◆';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 8px;
+    color: var(--c-dawn);
+    background: rgb(var(--card));
+    padding: 0 8px;
   }
 
   /* 卡片样式 */
@@ -234,18 +286,23 @@
   }
 
   .btn-shimmer::after {
-    content: "";
+    content: '';
     @apply absolute inset-0 opacity-0 transition-opacity;
-    background: linear-gradient(90deg,
-        transparent 0%,
-        rgba(255, 255, 255, 0.2) 50%,
-        transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%);
     background-size: 200% 100%;
   }
 
   .btn-shimmer:hover::after {
     @apply opacity-100;
     animation: shimmer 1.5s ease-in-out;
+  }
+
+  /* 所有按钮 active 态（触觉反馈） */
+  .btn-shimmer:active,
+  .btn-amber:active,
+  .btn-outline:active {
+    transform: scale(0.96);
+    transition: transform 0.1s ease;
   }
 }
 
@@ -256,23 +313,12 @@
 
   /* 山脉剪影：使用 clip-path 勾勒柔和的多层山线（替代原树林） */
   .clip-path-mountain {
-    clip-path: polygon(0% 100%, 0% 78%,
-        5% 70%, 10% 82%, 15% 65%, 20% 76%, 25% 60%, 30% 72%,
-        35% 58%, 40% 70%, 45% 55%, 50% 68%,
-        55% 50%, 60% 66%, 65% 52%, 70% 64%, 75% 54%, 80% 66%,
-        85% 56%, 90% 68%, 95% 58%, 100% 70%, 100% 100%);
+    clip-path: polygon(0% 100%, 0% 78%, 5% 70%, 10% 82%, 15% 65%, 20% 76%, 25% 60%, 30% 72%, 35% 58%, 40% 70%, 45% 55%, 50% 68%, 55% 50%, 60% 66%, 65% 52%, 70% 64%, 75% 54%, 80% 66%, 85% 56%, 90% 68%, 95% 58%, 100% 70%, 100% 100%);
   }
 
   /* 兼容旧别名（树林剪影） */
   .clip-path-forest {
-    clip-path: polygon(0% 100%, 0% 70%,
-        4% 62%, 7% 72%, 11% 58%, 14% 68%,
-        18% 50%, 22% 60%, 26% 54%, 30% 66%,
-        34% 48%, 38% 60%, 42% 52%, 46% 64%,
-        50% 50%, 54% 62%, 58% 52%, 62% 64%,
-        66% 48%, 70% 60%, 74% 50%, 78% 62%,
-        82% 52%, 86% 60%, 90% 50%, 93% 60%,
-        96% 54%, 100% 58%, 100% 100%);
+    clip-path: polygon(0% 100%, 0% 70%, 4% 62%, 7% 72%, 11% 58%, 14% 68%, 18% 50%, 22% 60%, 26% 54%, 30% 66%, 34% 48%, 38% 60%, 42% 52%, 46% 64%, 50% 50%, 54% 62%, 58% 52%, 62% 64%, 66% 48%, 70% 60%, 74% 50%, 78% 62%, 82% 52%, 86% 60%, 90% 50%, 93% 60%, 96% 54%, 100% 58%, 100% 100%);
   }
 
   /* 城市光晕渐隐遮罩：顶部透明，60% 处开始可见 */
@@ -315,6 +361,32 @@
   }
 }
 
+/* ============================================================
+   全局滚动与触摸安全
+   ============================================================ */
+html {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* 移动端触摸目标最小 44x44px  */
+@media (max-width: 767px) {
+  a,
+  button,
+  [role='button'],
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
 /* 自定义光标相关代码已移除：恢复浏览器默认指针样式 */
 
 /* ============================================================
@@ -343,7 +415,9 @@
   gap: 0;
   padding-right: 12px;
   /* dot 与视口边保留呼吸距离 */
-  transition: opacity 0.4s ease, transform 0.4s ease;
+  transition:
+    opacity 0.4s ease,
+    transform 0.4s ease;
 }
 
 .vitalog-ribbon__item {
@@ -376,7 +450,8 @@
   color: rgba(237, 230, 218, 0.55);
   opacity: 0;
   transform: translateX(8px);
-  transition: opacity 0.4s cubic-bezier(0.22, 0.61, 0.36, 1),
+  transition:
+    opacity 0.4s cubic-bezier(0.22, 0.61, 0.36, 1),
     transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1),
     color 0.4s ease;
   white-space: nowrap;
@@ -390,14 +465,14 @@
   font-family: var(--font-mono);
   font-size: 9px;
   letter-spacing: 0.15em;
-  color: rgba(237, 230, 218, 0.30);
+  color: rgba(237, 230, 218, 0.3);
   margin-right: 4px;
   opacity: 0;
   transition: opacity 0.4s ease;
 }
 
 :where(html:not(.dark)) .vitalog-ribbon__time {
-  color: rgba(40, 35, 28, 0.30);
+  color: rgba(40, 35, 28, 0.3);
 }
 
 .vitalog-ribbon:hover .vitalog-ribbon__label,
@@ -429,7 +504,7 @@
 }
 
 .vitalog-ribbon__item.is-current::before {
-  content: "";
+  content: '';
   position: absolute;
   right: -20px;
   top: 50%;
@@ -457,7 +532,6 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--c-night, #0F1219);
 }
 
 /* 全屏背景图（fixed 容器 + 滚动驱动 transform） */
@@ -490,9 +564,8 @@
   inset: 0;
   background:
     /* 顶部：从 0% 延伸到 ~20%，与 topbar (h-56 约 15vh) 底部对齐 */
-    linear-gradient(180deg, rgba(9, 9, 15, 0.50) 0%, rgba(9, 9, 15, 0.50) 18%, rgba(9, 9, 15, 0.0) 50%, rgba(9, 9, 15, 0.55) 100%),
-    /* 左上斜角加深（品牌区） */
-    linear-gradient(135deg, rgba(9, 9, 15, 0.60) 0%, rgba(9, 9, 15, 0.15) 45%, rgba(9, 9, 15, 0.0) 100%);
+    linear-gradient(180deg, rgba(9, 9, 15, 0.5) 0%, rgba(9, 9, 15, 0.5) 18%, rgba(9, 9, 15, 0) 50%, rgba(9, 9, 15, 0.55) 100%),
+    /* 左上斜角加深（品牌区） */ linear-gradient(135deg, rgba(9, 9, 15, 0.6) 0%, rgba(9, 9, 15, 0.15) 45%, rgba(9, 9, 15, 0) 100%);
   pointer-events: none;
 }
 
@@ -558,7 +631,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #FFB86C, #F2A65A);
+  background: linear-gradient(135deg, #ffb86c, #f2a65a);
   box-shadow: 0 0 8px rgba(255, 184, 108, 0.6);
 }
 
@@ -581,8 +654,8 @@
 
 .vitalog-hero-intro__switch:hover {
   background: rgba(255, 255, 255, 0.1);
-  border-color: var(--c-amber, #F2A65A);
-  color: var(--c-amber, #F2A65A);
+  border-color: var(--c-amber, #f2a65a);
+  color: var(--c-amber, #f2a65a);
 }
 
 .vitalog-hero-intro__switch svg {
@@ -637,7 +710,7 @@
   align-items: center;
   gap: 10px;
   padding: 10px 22px;
-  background: #C8E04D;
+  background: #c8e04d;
   /* 浅黄绿 */
   color: #1a1a1a;
   border: none;
@@ -652,7 +725,7 @@
 }
 
 .vitalog-hero-intro__cta:hover {
-  background: #B8D038;
+  background: #b8d038;
   transform: translateY(-2px);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
 }
@@ -704,7 +777,96 @@
   }
 
   .vitalog-hero-intro__title {
-    font-size: clamp(56px, 18vw, 96px);
+    font-size: clamp(42px, 14vw, 64px);
+  }
+
+  /* 移动端 CTA 全宽 */
+  .vitalog-hero-intro__cta {
+    width: 100%;
+    justify-content: center;
+    padding: 14px 24px;
+  }
+
+  /* 隐藏 "WELCOME TO" 装饰文字 */
+  .vitalog-hero-intro__below {
+    display: none;
+  }
+}
+
+/* ============================================================
+   移动端全局适配（< 768px）
+   ============================================================ */
+@media (max-width: 767px) {
+  /* ---- 隐藏右侧时间带 ---- */
+  .vitalog-ribbon {
+    display: none !important;
+  }
+
+  /* ---- 隐藏装饰性小点 ---- */
+  .vitalog-shi__dots {
+    display: none;
+  }
+
+  /* ---- 隐藏右侧表盘 / 名称 / 时间码 ---- */
+  .vitalog-shi__dial,
+  .vitalog-shi__vname,
+  .vitalog-shi__timecode {
+    display: none;
+  }
+
+  /* ---- 缩小装饰插画 ---- */
+  .vitalog-shi__art {
+    width: 100px;
+    height: 100px;
+    right: -10px;
+    opacity: 0.25;
+  }
+
+  /* ---- 十二时辰区块：缩小内边距 ---- */
+  .vitalog-shi {
+    padding: 120px 20px 80px 20px;
+  }
+
+  .vitalog-shi__inner {
+    max-width: 100%;
+  }
+
+  .vitalog-shi__char {
+    font-size: clamp(72px, 18vw, 140px);
+  }
+
+  /* ---- 图片模式 shi 区块：纵向堆叠 ---- */
+  .vitalog-shi--has-img {
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .vitalog-shi--has-img .vitalog-shi__inner {
+    max-width: 100%;
+    padding: 0;
+  }
+
+  .vitalog-shi__img-frame {
+    min-height: 220px;
+    mask-image: linear-gradient(180deg, transparent 0%, #000 12%, #000 100%);
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 12%, #000 100%);
+  }
+
+  /* ---- 水印缩小 ---- */
+  .vitalog-shi__watermark {
+    font-size: clamp(100px, 28vw, 160px);
+    opacity: 0.12;
+    right: -20px;
+  }
+
+  /* ---- 代码块平滑滚动 ---- */
+  .prose-custom pre {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .prose-custom img {
+    max-width: 100%;
+    height: auto;
   }
 }
 
@@ -729,7 +891,7 @@
   width: 64px;
   height: 64px;
   background: var(--c-dawn);
-  color: #14110F;
+  color: #14110f;
   font-family: var(--font-serif);
   font-size: 30px;
   display: flex;
@@ -742,14 +904,13 @@
 }
 
 @keyframes vitalog-seal-breath {
-
   0%,
   100% {
-    box-shadow: 0 0 40px rgba(200, 149, 109, 0.30);
+    box-shadow: 0 0 40px rgba(200, 149, 109, 0.3);
   }
 
   50% {
-    box-shadow: 0 0 60px rgba(200, 149, 109, 0.60);
+    box-shadow: 0 0 60px rgba(200, 149, 109, 0.6);
   }
 }
 
@@ -794,7 +955,6 @@
 }
 
 @keyframes vitalog-scroll-hint {
-
   0%,
   100% {
     transform: translateY(0);
@@ -839,12 +999,12 @@
   z-index: 0;
   pointer-events: none;
   /* 兜底色：与首节（子 · 夜半）同色，避免 SSR / 水合前白屏闪烁 */
-  background-color: #0F1219;
+  background-color: #0f1219;
   will-change: background-color;
 }
 
 :where(html:not(.dark)) .vitalog-bg-layer {
-  background-color: #EEEAE2;
+  background-color: #eeeae2;
 }
 
 /* ============================================================
@@ -962,7 +1122,7 @@
 
 .vitalog-shi__cta-link:hover {
   background: var(--shi-accent, var(--c-dawn));
-  color: #14110F;
+  color: #14110f;
   border-color: transparent;
   transform: translateX(4px);
 }
@@ -1084,7 +1244,8 @@
 }
 
 @keyframes vitalog-shi-dot-twinkle {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     opacity: var(--dot-opacity, 0.4);
   }
@@ -1216,7 +1377,9 @@
   /* 降低饱和度 + 透明度，让图作为氛围而非主体 */
   filter: saturate(0.8) contrast(0.95) brightness(0.9);
   opacity: 0.42;
-  transition: opacity 0.6s ease, filter 0.6s ease;
+  transition:
+    opacity 0.6s ease,
+    filter 0.6s ease;
 }
 
 :where(html:not(.dark)) .vitalog-shi__img {
@@ -1226,28 +1389,20 @@
 
 .vitalog-shi__img-frame:hover .vitalog-shi__img {
   opacity: 0.7;
-  filter: saturate(1.05) contrast(1.0) brightness(1.0);
+  filter: saturate(1.05) contrast(1) brightness(1);
 }
 
 /* 图片上渐变蒙版：与背景色融合 + 提升可读性 */
 .vitalog-shi__img-veil {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg,
-      rgba(0, 0, 0, 0.25) 0%,
-      rgba(0, 0, 0, 0.05) 30%,
-      rgba(0, 0, 0, 0) 70%,
-      rgba(0, 0, 0, 0.20) 100%);
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.25) 0%, rgba(0, 0, 0, 0.05) 30%, rgba(0, 0, 0, 0) 70%, rgba(0, 0, 0, 0.2) 100%);
   pointer-events: none;
   mix-blend-mode: multiply;
 }
 
 :where(html:not(.dark)) .vitalog-shi__img-veil {
-  background: linear-gradient(90deg,
-      rgba(0, 0, 0, 0.15) 0%,
-      rgba(0, 0, 0, 0) 40%,
-      rgba(0, 0, 0, 0) 70%,
-      rgba(0, 0, 0, 0.10) 100%);
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0) 70%, rgba(0, 0, 0, 0.1) 100%);
 }
 
 /* 角标：时辰 + 时间 */
@@ -1274,7 +1429,7 @@
   font-size: 28px;
   line-height: 1;
   letter-spacing: 0.05em;
-  color: var(--c-dawn, #F2A65A);
+  color: var(--c-dawn, #f2a65a);
 }
 
 .vitalog-shi__img-caption-text {
@@ -1509,7 +1664,9 @@
   color: inherit;
   opacity: 0.85;
   text-decoration: none;
-  transition: opacity 0.4s var(--ease, ease), transform 0.4s var(--ease, ease);
+  transition:
+    opacity 0.4s var(--ease, ease),
+    transform 0.4s var(--ease, ease);
 }
 
 .vitalog-noon-slide__cta-link:hover {
@@ -1625,7 +1782,6 @@
   }
 }
 
-
 /* ============================================================
    八、Section 通用 + 空态
    ============================================================ */
@@ -1669,6 +1825,7 @@
   flex: 1 1 auto;
   min-height: 0;
   position: relative;
+  padding-top: 56px;
 }
 
 .vitalog-main-layout__content {
@@ -1705,24 +1862,26 @@
   text-decoration: none;
   border-radius: 8px;
   white-space: nowrap;
-  transition: color 0.3s ease, background 0.3s ease;
+  transition:
+    color 0.3s ease,
+    background 0.3s ease;
 }
 
 .vitalog-topbar__nav-item::after {
-  content: "";
+  content: '';
   position: absolute;
   left: 50%;
   bottom: 4px;
   width: 0;
   height: 1.5px;
-  background: var(--c-amber, #F2A65A);
+  background: var(--c-amber, #f2a65a);
   border-radius: 2px;
   transform: translateX(-50%);
   transition: width 0.3s ease;
 }
 
 .vitalog-topbar__nav-item:hover {
-  color: var(--c-amber, #F2A65A);
+  color: var(--c-amber, #f2a65a);
   background: rgba(255, 255, 255, 0.05);
 }
 
@@ -1741,7 +1900,7 @@
 }
 
 :where(html:not(.dark)) .vitalog-topbar__nav-item:hover {
-  color: var(--c-amber, #B8761E);
+  color: var(--c-amber, #b8761e);
   background: rgba(20, 16, 12, 0.04);
 }
 
@@ -1756,7 +1915,6 @@
   }
 }
 
-
 /* ============================================================
    十三、首页体验增强：滚动进度 / 返回顶部
    ============================================================ */
@@ -1768,7 +1926,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, var(--c-dawn), var(--c-amber-bright, #FFB86C));
+  background: linear-gradient(90deg, var(--c-dawn), var(--c-amber-bright, #ffb86c));
   transform-origin: 0 50%;
   z-index: 90;
   pointer-events: none;
@@ -1799,7 +1957,7 @@
   letter-spacing: 0.25em;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.10);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   z-index: 40;
   transition:
@@ -1819,7 +1977,7 @@
 .vitalog-backtotop:hover {
   color: var(--c-dawn);
   border-color: var(--c-dawn);
-  background: rgba(242, 166, 90, 0.10);
+  background: rgba(242, 166, 90, 0.1);
   transform: translateY(-2px);
   box-shadow: 0 8px 22px rgba(242, 166, 90, 0.25);
 }
@@ -1848,27 +2006,24 @@
    十四、顶部导航栏 TopHeader
    ============================================================ */
 .vitalog-topbar {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
   z-index: 80;
   width: 100%;
   height: 56px;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg,
-      rgba(9, 9, 15, 1) 0%,
-      rgba(9, 9, 15, 0.90) 100%);
+  background: linear-gradient(180deg, rgba(9, 9, 15, 1) 0%, rgba(9, 9, 15, 0.9) 100%);
   backdrop-filter: blur(18px) saturate(140%);
   -webkit-backdrop-filter: blur(18px) saturate(140%);
   border-bottom: 1px solid rgba(237, 230, 218, 0.08);
-  transition: transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: transform 0.3s ease-in-out;
   will-change: transform;
 }
 
 :where(html:not(.dark)) .vitalog-topbar {
-  background: linear-gradient(180deg,
-      rgba(250, 248, 244, 0.85) 0%,
-      rgba(250, 248, 244, 0.55) 100%);
+  background: linear-gradient(180deg, rgba(250, 248, 244, 0.85) 0%, rgba(250, 248, 244, 0.55) 100%);
   border-bottom-color: rgba(40, 35, 28, 0.08);
 }
 
@@ -1939,7 +2094,7 @@
 
 .vitalog-topbar__brand::before,
 .vitalog-topbar__brand::after {
-  content: "";
+  content: '';
   position: absolute;
   top: 50%;
   width: 18px;
@@ -2019,19 +2174,13 @@
   width: 64px;
   height: 32px;
   border-radius: 10px;
-  background: linear-gradient(90deg,
-      rgba(237, 230, 218, 0.05),
-      rgba(237, 230, 218, 0.12),
-      rgba(237, 230, 218, 0.05));
+  background: linear-gradient(90deg, rgba(237, 230, 218, 0.05), rgba(237, 230, 218, 0.12), rgba(237, 230, 218, 0.05));
   background-size: 200% 100%;
   animation: vitalog-skel 1.4s ease-in-out infinite;
 }
 
 :where(html:not(.dark)) .vitalog-topbar__auth-skel {
-  background: linear-gradient(90deg,
-      rgba(40, 35, 28, 0.04),
-      rgba(40, 35, 28, 0.10),
-      rgba(40, 35, 28, 0.04));
+  background: linear-gradient(90deg, rgba(40, 35, 28, 0.04), rgba(40, 35, 28, 0.1), rgba(40, 35, 28, 0.04));
   background-size: 200% 100%;
 }
 
@@ -2070,7 +2219,7 @@
 .vitalog-topbar__auth-login:hover {
   border-color: var(--c-dawn);
   color: var(--c-dawn);
-  background: rgba(242, 166, 90, 0.10);
+  background: rgba(242, 166, 90, 0.1);
   transform: translateY(-1px);
   box-shadow: 0 4px 16px rgba(242, 166, 90, 0.18);
 }
@@ -2094,7 +2243,7 @@
   border-radius: 50%;
   border: 1px solid rgba(237, 230, 218, 0.18);
   background: rgba(237, 230, 218, 0.04);
-  color: var(--c-amber-bright, #FFB86C);
+  color: var(--c-amber-bright, #ffb86c);
   cursor: pointer;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -2103,14 +2252,14 @@
 :where(html:not(.dark)) .vitalog-topbar__user-trigger {
   border-color: rgba(40, 35, 28, 0.18);
   background: rgba(40, 35, 28, 0.04);
-  color: #B8651B;
+  color: #b8651b;
 }
 
 .vitalog-topbar__user-trigger:hover {
   border-color: var(--c-dawn);
   background: rgba(242, 166, 90, 0.12);
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(242, 166, 90, 0.20);
+  box-shadow: 0 4px 16px rgba(242, 166, 90, 0.2);
 }
 
 .vitalog-topbar__user-avatar {
@@ -2152,12 +2301,12 @@
 
 .vitalog-topbar__user-info {
   padding: 10px 12px 8px;
-  border-bottom: 1px solid rgba(237, 230, 218, 0.10);
+  border-bottom: 1px solid rgba(237, 230, 218, 0.1);
   margin-bottom: 4px;
 }
 
 :where(html:not(.dark)) .vitalog-topbar__user-info {
-  border-bottom-color: rgba(40, 35, 28, 0.10);
+  border-bottom-color: rgba(40, 35, 28, 0.1);
 }
 
 .vitalog-topbar__user-name {
@@ -2186,14 +2335,14 @@
   padding: 2px 0;
 }
 
-.vitalog-topbar__user-list+.vitalog-topbar__user-list {
-  border-top: 1px solid rgba(237, 230, 218, 0.10);
+.vitalog-topbar__user-list + .vitalog-topbar__user-list {
+  border-top: 1px solid rgba(237, 230, 218, 0.1);
   margin-top: 2px;
   padding-top: 4px;
 }
 
-:where(html:not(.dark)) .vitalog-topbar__user-list+.vitalog-topbar__user-list {
-  border-top-color: rgba(40, 35, 28, 0.10);
+:where(html:not(.dark)) .vitalog-topbar__user-list + .vitalog-topbar__user-list {
+  border-top-color: rgba(40, 35, 28, 0.1);
 }
 
 .vitalog-topbar__user-item {
@@ -2210,16 +2359,18 @@
   text-decoration: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 .vitalog-topbar__user-item:hover {
-  background: rgba(242, 166, 90, 0.10);
+  background: rgba(242, 166, 90, 0.1);
   color: var(--c-dawn);
 }
 
 .vitalog-topbar__user-item--accent {
-  color: var(--c-amber-bright, #FFB86C);
+  color: var(--c-amber-bright, #ffb86c);
 }
 
 .vitalog-topbar__user-item--accent:hover {
@@ -2232,7 +2383,7 @@
 }
 
 .vitalog-topbar__user-item--danger:hover {
-  background: rgba(232, 90, 90, 0.10);
+  background: rgba(232, 90, 90, 0.1);
   color: #ff7070;
 }
 
@@ -2247,7 +2398,7 @@
   border: 1px solid rgba(237, 230, 218, 0.18);
   background: rgba(237, 230, 218, 0.04);
   border-radius: 10px;
-  color: var(--c-amber-bright, #FFB86C);
+  color: var(--c-amber-bright, #ffb86c);
   cursor: pointer;
   padding: 0;
   transition: all 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -2257,14 +2408,14 @@
 :where(html:not(.dark)) .vitalog-topbar__theme {
   border-color: rgba(40, 35, 28, 0.18);
   background: rgba(40, 35, 28, 0.04);
-  color: #B8651B;
+  color: #b8651b;
 }
 
 .vitalog-topbar__theme:hover {
   border-color: var(--c-dawn);
   background: rgba(242, 166, 90, 0.12);
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(242, 166, 90, 0.20);
+  box-shadow: 0 4px 16px rgba(242, 166, 90, 0.2);
 }
 
 .vitalog-topbar__theme:active {
@@ -2319,7 +2470,7 @@
 
 .vitalog-topbar__burger:hover {
   border-color: var(--c-dawn);
-  background: rgba(242, 166, 90, 0.10);
+  background: rgba(242, 166, 90, 0.1);
 }
 
 .vitalog-topbar__burger-line {
@@ -2389,26 +2540,20 @@
   display: block;
   height: 1px;
   margin: 8px 24px;
-  background: linear-gradient(90deg,
-      transparent,
-      rgba(237, 230, 218, 0.18),
-      transparent);
+  background: linear-gradient(90deg, transparent, rgba(237, 230, 218, 0.18), transparent);
 }
 
 :where(html:not(.dark)) .vitalog-topbar__drawer-sep {
-  background: linear-gradient(90deg,
-      transparent,
-      rgba(40, 35, 28, 0.18),
-      transparent);
+  background: linear-gradient(90deg, transparent, rgba(40, 35, 28, 0.18), transparent);
 }
 
 /* drawer 内的次级配色：注册 / 后台管理（暖色强调） */
 .vitalog-topbar__drawer-item--accent {
-  color: var(--c-amber-bright, #FFB86C);
+  color: var(--c-amber-bright, #ffb86c);
 }
 
 .vitalog-topbar__drawer-item--accent:hover {
-  background: rgba(242, 166, 90, 0.10);
+  background: rgba(242, 166, 90, 0.1);
   color: var(--c-dawn);
   border-left-color: var(--c-dawn);
 }
@@ -2450,6 +2595,10 @@
 @media (max-width: 720px) {
   .vitalog-topbar {
     height: 52px;
+  }
+
+  .vitalog-main-layout__body {
+    padding-top: 52px;
   }
 
   .vitalog-topbar__inner {
@@ -2501,10 +2650,11 @@
     display: none;
   }
 
-  /* 主题切换按钮：缩小尺寸，保留可见 */
+  /* 主题切换按钮：缩小尺寸，保留可见，为汉堡按钮留出空间 */
   .vitalog-topbar__theme {
     width: 32px;
     height: 32px;
+    margin-right: 44px;
   }
 
   .vitalog-topbar__theme-sun,
@@ -2579,10 +2729,12 @@
 }
 
 .vitalog-footer__link {
-  color: var(--c-dawn, #7FB069);
+  color: var(--c-dawn, #7fb069);
   text-decoration: none;
   font-weight: 500;
-  transition: color 0.2s ease, opacity 0.2s ease;
+  transition:
+    color 0.2s ease,
+    opacity 0.2s ease;
   opacity: 0.95;
   display: inline-flex;
   align-items: center;
@@ -2595,7 +2747,7 @@
 }
 
 .vitalog-footer__link:hover {
-  color: var(--c-amber-bright, #FFB86C);
+  color: var(--c-amber-bright, #ffb86c);
   opacity: 1;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -2638,7 +2790,7 @@
   gap: 12px;
   padding: 24px;
   border-radius: 18px;
-  background: linear-gradient(180deg, #1A1A1F 0%, #0F0F14 100%);
+  background: linear-gradient(180deg, #1a1a1f 0%, #0f0f14 100%);
   border: 1px solid rgba(237, 230, 218, 0.18);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
   color: rgba(240, 240, 240, 0.85);
@@ -2647,7 +2799,7 @@
 }
 
 :where(html:not(.dark)) .vitalog-footer__qr-card {
-  background: linear-gradient(180deg, #FFFFFF 0%, #FAF8F4 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #faf8f4 100%);
   border-color: rgba(40, 35, 28, 0.16);
   box-shadow: 0 24px 60px rgba(40, 35, 28, 0.18);
   color: rgba(20, 16, 12, 0.85);
@@ -2680,12 +2832,14 @@
   color: inherit;
   cursor: pointer;
   opacity: 0.55;
-  transition: opacity 0.2s ease, background 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    background 0.2s ease;
 }
 
 .vitalog-footer__qr-close:hover {
   opacity: 1;
-  background: rgba(237, 230, 218, 0.10);
+  background: rgba(237, 230, 218, 0.1);
 }
 
 .vitalog-footer__qr-img {
@@ -2742,7 +2896,9 @@
   font-size: 13px;
   letter-spacing: 0.08em;
   opacity: 0.6;
-  transition: opacity 0.2s ease, color 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    color 0.2s ease;
 }
 
 .vitalog-page__back-link:hover {
@@ -2760,7 +2916,7 @@
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.3em;
-  color: var(--c-dawn, #7FB069);
+  color: var(--c-dawn, #7fb069);
   opacity: 0.85;
 }
 
@@ -2791,7 +2947,7 @@
   font-size: 18px;
   font-weight: 500;
   letter-spacing: 0.06em;
-  color: var(--c-amber-bright, #FFB86C);
+  color: var(--c-amber-bright, #ffb86c);
 }
 
 .vitalog-page__body h2:first-child {
@@ -2803,12 +2959,12 @@
 }
 
 .vitalog-page__body strong {
-  color: var(--c-amber-bright, #FFB86C);
+  color: var(--c-amber-bright, #ffb86c);
   font-weight: 500;
 }
 
 .vitalog-page__inline-link {
-  color: var(--c-dawn, #7FB069);
+  color: var(--c-dawn, #7fb069);
   text-decoration: none;
   font-weight: 500;
   border-bottom: 1px dashed currentColor;
@@ -2817,7 +2973,7 @@
 }
 
 .vitalog-page__inline-link:hover {
-  color: var(--c-amber-bright, #FFB86C);
+  color: var(--c-amber-bright, #ffb86c);
 }
 
 .vitalog-page__foot {
@@ -2845,5 +3001,80 @@
 
   .vitalog-page__body {
     font-size: 14.5px;
+  }
+
+  /* ---- Footer 链接换行 ---- */
+  .vitalog-footer__line {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+  }
+}
+
+/* ============================================================
+   安全区域（刘海屏 / 底部指示条）
+   ============================================================ */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* ============================================================
+   十六、代码块复制按钮
+   - 每个 pre 右上角的复制按钮
+   - hover 时显示，复制后短暂变绿色对勾
+   ============================================================ */
+.copy-code-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid rgba(237, 230, 218, 0.15);
+  border-radius: 6px;
+  background: rgba(237, 230, 218, 0.04);
+  color: rgba(237, 230, 218, 0.55);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+pre:hover .copy-code-btn {
+  opacity: 1;
+}
+
+.copy-code-btn:hover {
+  color: #ffb86c;
+  border-color: rgba(255, 184, 108, 0.35);
+  background: rgba(255, 184, 108, 0.1);
+}
+
+.copy-code-btn.copied {
+  color: #7fb069;
+  border-color: rgba(127, 176, 105, 0.35);
+  background: rgba(127, 176, 105, 0.1);
+}
+
+.copy-code-btn svg {
+  flex-shrink: 0;
+}
+
+/* 移动端始终显示（因为没有 hover） */
+@media (max-width: 720px) {
+  .copy-code-btn {
+    opacity: 0.85;
+    padding: 4px 8px;
+    font-size: 11px;
   }
 }

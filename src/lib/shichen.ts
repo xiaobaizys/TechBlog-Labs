@@ -130,6 +130,8 @@ export const SHICHEN: readonly Shichen[] = [
     deco: "steam",
     href: "/blog",
     cta: "读一篇短札",
+    image: "/image/000927-1721491767bf5b.jpg",
+    imagePos: "right",
   },
   {
     char: "巳",
@@ -144,6 +146,8 @@ export const SHICHEN: readonly Shichen[] = [
     deco: "leaf",
     href: "/projects",
     cta: "看一个项目",
+    image: "/image/153822-1762155502b8d0.jpg",
+    imagePos: "left",
   },
   {
     char: "午",
@@ -158,6 +162,8 @@ export const SHICHEN: readonly Shichen[] = [
     deco: "sun",
     href: "/blog",
     cta: "读一篇长文",
+    image: "/image/170814-17723560945af6.jpg",
+    imagePos: "right",
   },
   {
     char: "未",
@@ -172,6 +178,8 @@ export const SHICHEN: readonly Shichen[] = [
     deco: "wave",
     href: "/life",
     cta: "记一笔日常",
+    image: "/image/195529-1773316529410c.jpg",
+    imagePos: "left",
   },
   {
     char: "申",
@@ -186,6 +194,8 @@ export const SHICHEN: readonly Shichen[] = [
     deco: "leaf-fall",
     href: "/projects",
     cta: "看今日成果",
+    image: "/image/background (2).jpg",
+    imagePos: "right",
   },
   {
     char: "酉",
@@ -200,6 +210,8 @@ export const SHICHEN: readonly Shichen[] = [
     deco: "sunset",
     href: "/life",
     cta: "回到生活",
+    image: "/image/background (3).jpg",
+    imagePos: "left",
   },
   {
     char: "戌",
@@ -214,6 +226,8 @@ export const SHICHEN: readonly Shichen[] = [
     deco: "lamp",
     href: "/blog",
     cta: "读一篇长评",
+    image: "/image/background (4).jpg",
+    imagePos: "right",
   },
   {
     char: "亥",
@@ -228,6 +242,8 @@ export const SHICHEN: readonly Shichen[] = [
     deco: "moon-2",
     href: "/about",
     cta: "关于我",
+    image: "/image/background (1).png",
+    imagePos: "left",
   },
 ] as const;
 

@@ -23,12 +23,15 @@ interface Meteor {
 }
 
 const STAR_DENSITY_DIVISOR = 7000; // 数值越大星点越稀疏（v1 是 4500，v2 更克制）
+const STAR_DENSITY_DIVISOR_MOBILE = 12000; // 移动端更稀疏，减少性能消耗
 const MAX_METEORS = 3;
+const MAX_METEORS_MOBILE = 0; // 移动端禁用流星效果
 const MIN_SPAWN_INTERVAL = 4000;
 const MAX_SPAWN_INTERVAL = 9000;
 
-function generateStars(width: number, height: number): Star[] {
-  const count = Math.floor((width * height) / STAR_DENSITY_DIVISOR);
+function generateStars(width: number, height: number, isMobile: boolean): Star[] {
+  const divisor = isMobile ? STAR_DENSITY_DIVISOR_MOBILE : STAR_DENSITY_DIVISOR;
+  const count = Math.floor((width * height) / divisor);
   const stars: Star[] = [];
   for (let i = 0; i < count; i++) {
     stars.push({
@@ -91,6 +94,7 @@ export function Starfield() {
       const dpr = window.devicePixelRatio || 1;
       const w = window.innerWidth;
       const h = window.innerHeight;
+      const mobile = w < 768;
       sizeRef.current = { w, h };
       canvas.width = w * dpr;
       canvas.height = h * dpr;
@@ -98,7 +102,7 @@ export function Starfield() {
       canvas.style.height = `${h}px`;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
-      starsRef.current = generateStars(w, h);
+      starsRef.current = generateStars(w, h, mobile);
     };
 
     setupCanvas();
@@ -130,10 +134,12 @@ export function Starfield() {
         ctx.fill();
       }
 
-      // 流星生成节奏控制
+      // 流星生成节奏控制（移动端禁用流星）
+      const maxMeteors = w < 768 ? MAX_METEORS_MOBILE : MAX_METEORS;
       if (
+        maxMeteors > 0 &&
         timestamp - lastSpawnRef.current > nextSpawnDelayRef.current &&
-        meteorsRef.current.length < MAX_METEORS
+        meteorsRef.current.length < maxMeteors
       ) {
         meteorsRef.current.push(spawnMeteor(w, h));
         lastSpawnRef.current = timestamp;

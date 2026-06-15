@@ -159,9 +159,10 @@ function NoonSlide({
   total: number;
   isLast?: boolean;
 }) {
+  const hasImage = !!(s as any).image;
   return (
     <article
-      className={`vitalog-noon-slide ${isLast ? "vitalog-noon-slide--last" : ""}`}
+      className={`vitalog-noon-slide ${hasImage ? "vitalog-shi--has-img" : ""} ${isLast ? "vitalog-noon-slide--last" : ""}`}
       data-shi-idx={globalIdx}
       style={{ ["--shi-accent" as string]: s.accentVar }}
     >
@@ -197,10 +198,32 @@ function NoonSlide({
             </span>
           ))}
         </div>
-
-        {/* 辰巳午未 水平面板中不展示底部 CTA，避免与左侧 TimeRibbon
-           抢视线；如需落地页可点击左侧时间带对应项 */}
       </div>
+
+      {/* 时辰配图 */}
+      {hasImage && (s as any).image && (
+        <div
+          className="vitalog-shi__img-frame"
+          style={{ minHeight: 320, maxHeight: 440, height: "50vh" }}
+        >
+          <div className="vitalog-shi__img-wrap">
+            <img
+              src={(s as any).image}
+              alt={s.name}
+              className="vitalog-shi__img"
+              loading="lazy"
+              decoding="async"
+            />
+            <div className="vitalog-shi__img-veil" aria-hidden />
+            <div className="vitalog-shi__img-caption">
+              <span className="vitalog-shi__img-caption-char">{s.char}</span>
+              <span className="vitalog-shi__img-caption-text">
+                {s.range} · {s.name}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div
         className="vitalog-noon-slide__art"

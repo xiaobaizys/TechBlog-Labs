@@ -30,7 +30,7 @@ import { ThemeToggle } from './topbar/ThemeToggle'
  *   - 移动端（≤720px）折叠为汉堡菜单
  *   - 顶部进度条（琥珀色）
  */
-const TRIGGER_DISTANCE = 100
+const TRIGGER_DISTANCE = 10
 
 export function TopHeader() {
   const pathname = usePathname()

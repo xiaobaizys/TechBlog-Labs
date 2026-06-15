@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,6 +15,11 @@ const NAV_LINKS = [
   { href: "/life", label: "生活" },
   { href: "/about", label: "关于" },
 ] as const;
+
+/** 触发隐藏的滚动距离 */
+const SCROLL_HIDE_DISTANCE = 10;
+/** 死区：滚动小于此值不触发切换 */
+const SCROLL_DEAD_ZONE = 6;
 
 /**
  * 站点 Logo 组件
@@ -202,10 +207,43 @@ function UserMenu({
 
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const { data: session, status } = useSession();
   const isAuth = status === "authenticated";
   const isLoading = status === "loading";
   const isAdmin = session?.user?.role === "ADMIN";
+  const lastY = useRef(0);
+  const ticking = useRef(false);
+
+  // 滚动方向检测：向下滚隐藏，向上滚显示
+  const onScroll = useCallback(() => {
+    if (ticking.current) return;
+    ticking.current = true;
+    requestAnimationFrame(() => {
+      const y = window.scrollY;
+      const dy = y - lastY.current;
+      if (Math.abs(dy) < SCROLL_DEAD_ZONE) {
+        ticking.current = false;
+        return;
+      }
+      if (y < SCROLL_HIDE_DISTANCE) {
+        setHidden(false);
+      } else if (dy > 0) {
+        setHidden(true);
+        setMobileOpen(false);
+      } else {
+        setHidden(false);
+      }
+      lastY.current = y;
+      ticking.current = false;
+    });
+  }, []);
+
+  useEffect(() => {
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [onScroll]);
 
   async function handleSignOut() {
     setMobileOpen(false);
@@ -213,10 +251,19 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/50">
+    <header
+      className={`fixed top-0 z-50 w-full border-b border-border/50 bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/50 transition-transform duration-300 ease-in-out ${
+        hidden ? "-translate-y-full" : "translate-y-0"
+      }`}
+    >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Logo */}
-        <Logo />
+        {/* Logo — 移动端绝对居中 */}
+        <div className="max-md:absolute max-md:left-1/2 max-md:-translate-x-1/2 z-10">
+          <Logo />
+        </div>
+
+        {/* 移动端弹性填充（平衡右侧操作区） */}
+        <div className="flex-1 md:hidden" />
 
         {/* 桌面端导航 */}
         <nav className="hidden md:flex items-center gap-8">
@@ -268,7 +315,7 @@ export function Header() {
           {/* 移动端汉堡按钮 */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card/40 md:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card/40 md:hidden"
             aria-label="菜单"
           >
             {mobileOpen ? (

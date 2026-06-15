@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from '@/lib/toast'
 import { SliderCaptcha } from '@/components/auth/SliderCaptcha'
 
@@ -66,14 +66,17 @@ export function LoginForm() {
 
         if (!result) {
           setError('登录失败，请稍后重试')
+          setFailCount((c) => c + 1)
           return
         }
 
-        if (result.error) {
+        if (!result.ok || result.error) {
           // 解码错误信息（authorize() 抛出的 Error.message）
-          const msg = decodeAuthError(result.error)
+          const msg = decodeAuthError(result.error ?? '')
           setError(msg)
           setFailCount((c) => c + 1)
+          // 登录失败时清除已使用的 captcha ticket，下次需要重新验证
+          setCaptchaTicket(null)
           return
         }
 
@@ -160,15 +163,14 @@ export function LoginForm() {
   // JSX
   // ============================================================
   return (
-    <div className="relative flex w-full items-center justify-center px-4 py-6">
-      {/* 背景装饰 */}
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-amber/10 blur-3xl" />
-        <div className="absolute -bottom-32 -left-32 h-80 w-80 rounded-full bg-amber-bright/10 blur-3xl" />
-      </div>
-
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="w-full max-w-md">
-        <div className="theme-card p-8 md:p-10">
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="w-full max-w-md"
+      >
+        <div className="theme-card p-8 md:p-10 border-amber/10 dark:border-amber/10">
           {/* 标题 */}
           <div className="mb-8 text-center">
             <p className="mb-3 flex items-center justify-center gap-3 font-mono text-xs uppercase tracking-[0.3em] text-amber-bright/80">
@@ -181,19 +183,28 @@ export function LoginForm() {
           </div>
 
           {/* 错误提示 */}
-          {error && (
-            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} role="alert" className="mb-6 rounded-lg border border-red-300/60 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400">
-              <div className="flex items-center gap-2">
-                <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                <span>{error}</span>
-              </div>
-              {failCount >= 2 && failCount < 3 && <p className="mt-1.5 text-xs text-red-600/80 dark:text-red-400/80">再输错 {3 - failCount} 次将需要滑块验证</p>}
-            </motion.div>
-          )}
+          <AnimatePresence mode="sync">
+            {error && (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0, y: -8, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                exit={{ opacity: 0, y: -8, height: 0 }}
+                role="alert"
+                className="mb-6 rounded-lg border border-red-300/60 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-400 overflow-hidden"
+              >
+                <div className="flex items-center gap-2">
+                  <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <span>{error}</span>
+                </div>
+                {failCount >= 2 && failCount < 3 && <p className="mt-1.5 text-xs text-red-600/80 dark:text-red-400/80">再输错 {3 - failCount} 次将需要滑块验证</p>}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* 登录表单 */}
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -250,6 +261,7 @@ export function LoginForm() {
                   className="w-full bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-[rgb(var(--muted-foreground))]"
                 />
                 <button type="button" onClick={() => setShowPassword((s) => !s)} aria-label={showPassword ? '隐藏密码' : '显示密码'} className="pr-3 text-[rgb(var(--muted-foreground))] transition-colors hover:text-amber">
+                  <span className="block transition-transform duration-300" style={{ transform: showPassword ? 'rotateY(180deg)' : 'rotateY(0deg)' }}>
                   {showPassword ? (
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
@@ -263,6 +275,7 @@ export function LoginForm() {
                       <circle cx="12" cy="12" r="3" />
                     </svg>
                   )}
+                  </span>
                 </button>
               </div>
             </div>
@@ -367,7 +380,7 @@ export function LoginForm() {
 
       {/* 滑块验证：失败 3 次后弹出 */}
       <SliderCaptcha open={captchaOpen} onSuccess={handleCaptchaSuccess} onCancel={handleCaptchaCancel} mock={process.env.NODE_ENV !== 'production'} />
-    </div>
+    </>
   )
 }
 
@@ -388,7 +401,7 @@ function decodeAuthError(raw: string): string {
   s = s.trim()
 
   // 已经是中文 → 直接展示
-  if (/[\u4e00-\u9fa5]/.test(s)) return s
+  if (/[一-龥]/.test(s)) return s
 
   // 剥出 callback 错误里的原始 type
   const cbMatch = s.match(/CallbackRouteError[_\s]+(\w+)/)

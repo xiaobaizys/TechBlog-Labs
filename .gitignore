@@ -57,3 +57,13 @@ nextjs-app-router-guide.md
 
 # uploaded media (images / source files)
 /public/uploads/
+
+# deployment artifacts
+*.zip
+*.tar.gz
+
+# documentation
+/docs/
+
+# test scripts
+/scripts/

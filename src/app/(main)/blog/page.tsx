@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { type BlogCardPost } from '@/components/blog/BlogCard'
 import { getNumberConfig } from '@/lib/config'
 import { WritingHero } from '@/components/shared/WritingSection'
@@ -7,6 +8,12 @@ import { unstable_cache } from 'next/cache'
 import { buildPostKeywordWhere, buildPostTitleWhere, safePage, tokenize } from '@/lib/search'
 import { BlogSearchView } from '@/components/blog/BlogSearchView'
 import type { SearchCategory } from '@/components/search/SearchBar'
+
+// 延迟加载热门文章侧边栏组件
+const PopularArticles = dynamic(
+  () => import('./popular-articles').then((m) => m.PopularArticles),
+  { ssr: true }
+)
 
 // ============================================================
 // 类型
@@ -232,7 +239,7 @@ export default async function BlogListPage({ searchParams }: { searchParams: { p
         </div>
 
         {/* ============================================================ */}
-        {/* 侧边栏 — 热门标签 */}
+        {/* 侧边栏 — 热门标签 + 热门文章 */}
         {/* ============================================================ */}
         <aside className="w-full shrink-0 lg:w-64">
           <div className="sticky top-24">
@@ -249,6 +256,9 @@ export default async function BlogListPage({ searchParams }: { searchParams: { p
                 ))}
               </div>
             )}
+
+            {/* 热门文章 Top 5 */}
+            <PopularArticles />
           </div>
         </aside>
       </div>

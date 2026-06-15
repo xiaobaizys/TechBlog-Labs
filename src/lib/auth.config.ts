@@ -4,6 +4,11 @@ import GitHub from 'next-auth/providers/github'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { isCaptchaRequired, consumeTicket, onPwdFail, onPwdSuccess } from '@/lib/captcha'
+import { checkRateLimit } from '@/lib/rate-limit'
+import { headers } from 'next/headers'
+
+/** 登录限流：同一 IP 每分钟最多 5 次尝试 */
+const LOGIN_RATE_LIMIT = { namespace: 'auth', limit: 5, windowSec: 60 } as const
 
 // ============================================================
 // secret 解析：优先 AUTH_SECRET，回退 NEXTAUTH_SECRET
@@ -55,6 +60,21 @@ export default {
         password: { label: '密码', type: 'password' },
       },
       async authorize(credentials) {
+        // ---------- 0. 登录限流（每分钟 5 次/IP）----------
+        // 从请求 headers 取 IP，兼容代理/直连
+        const h = await headers()
+        const ip = h.get('x-forwarded-for')?.split(',')[0]?.trim()
+                ?? h.get('x-real-ip')
+                ?? 'unknown'
+
+        const rlResult = await checkRateLimit(
+          `ip:${ip}`,
+          LOGIN_RATE_LIMIT,
+        )
+        if (!rlResult.allowed) {
+          throw new Error(`请求过于频繁，请 ${rlResult.resetSec} 秒后再试`)
+        }
+
         // ---------- 1. 参数校验 ----------
         // 接受 { identifier, password, captchaTicket?, rememberMe? }，
         // 兼容老字段 email/username，避免 NextAuth v5 严格类型误报

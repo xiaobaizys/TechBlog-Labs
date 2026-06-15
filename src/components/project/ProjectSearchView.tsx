@@ -79,7 +79,7 @@ export function ProjectSearchView({
         )
       ) : (
         <>
-          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
             {projects.map((p) => (
               <ProjectCard key={p.id} project={p} showHighlight={showHighlight} />
             ))}

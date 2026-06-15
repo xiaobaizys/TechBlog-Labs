@@ -79,9 +79,14 @@ export function BlogSearchView({
         )
       ) : (
         <>
-          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-            {posts.map((post) => (
-              <BlogCard key={post.id} post={post} showHighlight={showHighlight} />
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
+            {posts.map((post, index) => (
+              <BlogCard
+                key={post.id}
+                post={post}
+                showHighlight={showHighlight}
+                featured={index === 0 && !isSearchMode}
+              />
             ))}
           </div>
           <Pagination page={pagination.page} totalPages={pagination.totalPages} />

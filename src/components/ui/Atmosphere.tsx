@@ -16,7 +16,7 @@ export function Atmosphere() {
   return (
     <div
       aria-hidden="true"
-      className="fixed inset-0 pointer-events-none z-[1] hidden dark:block overflow-hidden"
+      className="fixed inset-0 pointer-events-none z-[1] hidden dark:block overflow-hidden max-md:!hidden"
     >
       {/* 银河光带 */}
       <div className="absolute top-0 left-0 right-0 h-[70vh] bg-milky-way opacity-80" />

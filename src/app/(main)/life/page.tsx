@@ -1,8 +1,15 @@
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { unstable_cache } from "next/cache";
 import { LifeFeed } from "./life-feed";
+
+const MobileLifeFAB = dynamic(
+  () =>
+    import("@/components/life/MobileLifeFAB").then((m) => m.MobileLifeFAB),
+  { ssr: false }
+);
 
 // ============================================================
 // 类型
@@ -149,6 +156,9 @@ export default async function LifePage({
         initialPage={page}
         initialTotalPages={pagination.totalPages}
       />
+
+      {/* 移动端发布 FAB */}
+      <MobileLifeFAB />
     </div>
   );
 }

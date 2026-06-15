@@ -14,8 +14,8 @@ const Atmosphere = dynamic(
   () => import("@/components/ui/Atmosphere").then((m) => m.Atmosphere),
   { ssr: false }
 );
-const AIChatButton = dynamic(
-  () => import("@/components/ai/AIChatButton").then((m) => m.AIChatButton),
+const AppShell = dynamic(
+  () => import("@/components/layout/AppShell").then((m) => m.AppShell),
   { ssr: false }
 );
 
@@ -61,7 +61,12 @@ export async function generateMetadata(): Promise<Metadata> {
     description: siteDescription,
     keywords: seoKeywords.split(",").map((k) => k.trim()).filter(Boolean),
     authors: [{ name: siteTitle }],
-    metadataBase: new URL(process.env.NEXTAUTH_URL || "http://localhost:3000"),
+    metadataBase: new URL(process.env.NEXTAUTH_URL || "http://117.72.12.223"),
+    icons: {
+      icon: "/image/logo.png",
+      shortcut: "/image/logo.png",
+      apple: "/image/logo.png",
+    },
     openGraph: {
       type: "website",
       locale: "zh_CN",
@@ -88,9 +93,9 @@ export default function RootLayout({
         {/* 业务内容置于氛围层之上 */}
         <div className="relative z-10 flex flex-col flex-1">
           <Providers>
-            {children}
-            {/* AIChatButton 必须放在 Providers 内：内部用到 useSession() */}
-            <AIChatButton />
+            <AppShell>
+              {children}
+            </AppShell>
           </Providers>
         </div>
       </body>

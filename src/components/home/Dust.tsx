@@ -68,6 +68,8 @@ export function Dust() {
     }
 
     function init() {
+      // 移动端小屏（< 480px）跳过渲染，节省性能
+      if (window.innerWidth < 480) return;
       const count = Math.min(35, Math.floor((W * H) / 55000));
       const palette = readColors();
       particles = new Array(count).fill(0).map(() => ({

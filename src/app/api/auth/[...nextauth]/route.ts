@@ -1,5 +1,4 @@
 import { handlers } from "@/lib/auth";
-import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
  * NextAuth API 路由处理器
@@ -12,8 +11,7 @@ import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
  * - GET  /api/auth/csrf       → CSRF token
  * - GET  /api/auth/callback/* → OAuth 回调
  *
- * POST 加限流防登录爆破（5 req/min per IP）
+ * 限流已移入 authorize() 内部（auth.config.ts），避免破坏 NextAuth 响应协议。
+ * 外层包装会导致 429 JSON 与 NextAuth client 不兼容 → Invalid URL / 不可控错误。
  */
-const basePOST = handlers.POST;
-export const POST = withRateLimit(RATE_LIMITS.auth, (req) => basePOST(req));
-export const { GET } = handlers;
+export const { GET, POST } = handlers;

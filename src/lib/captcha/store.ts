@@ -164,29 +164,41 @@ function normalizeIdentifier(id: string): string {
 export async function getPwdFailCount(identifier: string): Promise<number> {
   const r = redis();
   if (!r) return 0;
-  const key = `pwd:f:${normalizeIdentifier(identifier)}`;
-  const v = await r.get(key);
-  return v ? Number(v) : 0;
+  try {
+    const key = `pwd:f:${normalizeIdentifier(identifier)}`;
+    const v = await r.get(key);
+    return v ? Number(v) : 0;
+  } catch {
+    return 0; // Redis 异常时 fail-open，不阻塞登录
+  }
 }
 
 /** 增加错误计数（成功登录调用 reset 清零） */
 export async function incPwdFail(identifier: string): Promise<number> {
   const r = redis();
   if (!r) return 0;
-  const key = `pwd:f:${normalizeIdentifier(identifier)}`;
-  const count = await r.incr(key);
-  if (count === 1) {
-    await r.expire(key, PWD_FAIL_TTL_SEC);
+  try {
+    const key = `pwd:f:${normalizeIdentifier(identifier)}`;
+    const count = await r.incr(key);
+    if (count === 1) {
+      await r.expire(key, PWD_FAIL_TTL_SEC);
+    }
+    return count;
+  } catch {
+    return 0; // Redis 异常时 fail-open
   }
-  return count;
 }
 
 /** 重置错误计数（成功登录后） */
 export async function resetPwdFail(identifier: string): Promise<void> {
   const r = redis();
   if (!r) return;
-  const key = `pwd:f:${normalizeIdentifier(identifier)}`;
-  await r.del(key);
+  try {
+    const key = `pwd:f:${normalizeIdentifier(identifier)}`;
+    await r.del(key);
+  } catch {
+    // Redis 异常时静默忽略
+  }
 }
 
 // ============================================================

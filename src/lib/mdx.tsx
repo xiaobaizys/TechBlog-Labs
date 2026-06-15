@@ -113,7 +113,8 @@ const MDX_OPTIONS: MDXRemoteProps["options"] = {
   mdxOptions: {
     remarkPlugins: [remarkGfm],
     rehypePlugins: [rehypeSlug, rehypeHighlight],
-    format: "mdx",
+    // 用 "md" 而非 "mdx"：避免内容中的 /、< 等字符被误解析为 JSX
+    format: "md",
   },
   parseFrontmatter: false,
 };
@@ -139,15 +140,49 @@ type MDXContentProps = {
  * ```
  */
 export async function MDXContent({ source }: MDXContentProps) {
-  return (
-    <div className="prose-custom">
-      <MDXRemote
-        source={source}
-        components={MDX_COMPONENTS}
-        options={MDX_OPTIONS}
-      />
-    </div>
-  );
+  try {
+    return (
+      <div className="prose-custom">
+        <MDXRemote
+          source={source}
+          components={MDX_COMPONENTS}
+          options={MDX_OPTIONS}
+        />
+      </div>
+    );
+  } catch (err) {
+    // MDX 解析失败时回退：把内容中可能导致 JSX 解析错误的字符转义后重试
+    const message = err instanceof Error ? err.message : String(err);
+    if (
+      message.includes("Unexpected character") ||
+      message.includes("Could not parse")
+    ) {
+      // 二次尝试：把 <、{ 等可能触发 JSX 解析的字符转义
+      const sanitized = source
+        .replace(/</g, "&lt;")
+        .replace(/\{/g, "&#123;");
+      try {
+        return (
+          <div className="prose-custom">
+            <MDXRemote
+              source={sanitized}
+              components={MDX_COMPONENTS}
+              options={MDX_OPTIONS}
+            />
+          </div>
+        );
+      } catch {
+        // 最终回退：渲染纯文本
+      }
+    }
+    return (
+      <div className="prose-custom">
+        <pre className="whitespace-pre-wrap break-words text-sm text-[rgb(var(--muted-foreground))]">
+          {source}
+        </pre>
+      </div>
+    );
+  }
 }
 
 // ============================================================

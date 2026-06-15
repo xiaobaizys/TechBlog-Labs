@@ -34,6 +34,18 @@ const TocSidebar = dynamic(
   { ssr: false }
 );
 
+// 延迟加载移动端 TOC 底部抽屉
+const MobileTocFAB = dynamic(
+  () => import("./mobile-toc").then((m) => m.MobileTocFAB),
+  { ssr: false }
+);
+
+// 延迟加载代码块复制按钮
+const CodeBlockCopy = dynamic(
+  () => import("./code-block-copy").then((m) => m.CodeBlockCopy),
+  { ssr: false }
+);
+
 // ============================================================
 // 类型
 // ============================================================
@@ -124,9 +136,11 @@ async function getPost(
       featured: post.featured,
       viewCount: post.viewCount,
       likeCount: post.likeCount,
-      publishedAt: post.publishedAt?.toISOString() ?? null,
-      createdAt: post.createdAt.toISOString(),
-      updatedAt: post.updatedAt.toISOString(),
+      publishedAt: post.publishedAt
+        ? (post.publishedAt instanceof Date ? post.publishedAt.toISOString() : String(post.publishedAt))
+        : null,
+      createdAt: post.createdAt instanceof Date ? post.createdAt.toISOString() : String(post.createdAt),
+      updatedAt: post.updatedAt instanceof Date ? post.updatedAt.toISOString() : String(post.updatedAt),
       author: post.author,
       tags: post.tags.map((t) => t.tag),
       commentCount: post._count.comments,
@@ -152,7 +166,8 @@ export async function generateMetadata({
   description?: string;
   openGraph?: { title?: string; description?: string; images?: string[]; type?: string };
 }> {
-  const result = await getPost(params.slug);
+  const slug = decodeURIComponent(params.slug);
+  const result = await getPost(slug);
   const post = result.data;
   if (!post) return { title: "文章不存在" };
 
@@ -180,7 +195,10 @@ export default async function BlogDetailPage({
   params: { slug: string };
 }) {
   const session = await auth();
-  const { data: post } = await getPost(params.slug, session?.user?.id);
+  // 中文 slug 在 URL 中是编码的（如 %E6%9B...），Next.js 14 不会自动 decode，
+  // 导致 slug 保持编码形态去查 DB 找不到，触发 notFound()。
+  const slug = decodeURIComponent(params.slug);
+  const { data: post } = await getPost(slug, session?.user?.id);
 
   if (!post) {
     notFound();
@@ -200,6 +218,9 @@ export default async function BlogDetailPage({
     <>
       {/* 阅读进度条 */}
       <ReadingProgress />
+
+      {/* 代码块复制按钮（客户端注入） */}
+      <CodeBlockCopy />
 
       <div className="mx-auto max-w-5xl px-5 md:px-10 lg:px-20 py-16">
         <div className="flex flex-col lg:flex-row gap-10">
@@ -303,6 +324,13 @@ export default async function BlogDetailPage({
                   className="object-cover"
                   priority
                 />
+                {/* 底部渐变遮罩，过渡到正文背景 */}
+                <div
+                  className="absolute inset-x-0 bottom-0 h-24 pointer-events-none"
+                  style={{
+                    background: 'linear-gradient(to top, rgb(var(--background)), transparent)',
+                  }}
+                />
               </div>
             )}
 
@@ -337,6 +365,7 @@ export default async function BlogDetailPage({
           {/* 侧边栏 — TOC（桌面端 · 延迟加载） */}
           {/* ============================================================ */}
           {toc.length > 0 && <TocSidebar toc={toc} />}
+          {toc.length > 0 && <MobileTocFAB toc={toc} />}
         </div>
       </div>
     </>

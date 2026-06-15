@@ -129,7 +129,7 @@ export default async function ProfilePage() {
       </section>
 
       {/* 统计卡片 */}
-      <section className="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
+      <section className="mt-6 grid grid-cols-3 gap-2 sm:gap-4">
         <StatCard label="博客" value={user.postsCount} href="/profile" />
         <StatCard
           label="生活分享"
@@ -144,7 +144,7 @@ export default async function ProfilePage() {
       </section>
 
       {/* 快捷入口 */}
-      <section className="mt-6 grid gap-3 sm:grid-cols-2">
+      <section className="mt-6 grid gap-3 grid-cols-1 sm:grid-cols-2">
         <QuickLink
           href="/profile/life"
           title="我的生活分享"
