@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { SHICHEN, currentShiIndex } from '@/lib/shichen'
+import { currentShiIndex, type Shichen } from '@/lib/shichen'
 
 /**
  * 左侧十二时时间带（核心创新导航）
@@ -14,7 +14,7 @@ import { SHICHEN, currentShiIndex } from '@/lib/shichen'
  *  - 移入时显示 label，移出自动收起（默认节省空间）
  *  - 仅桌面端显示（> 720px）
  */
-export function TimeRibbon() {
+export function TimeRibbon({ shichenData }: { shichenData: readonly Shichen[] }) {
   const [active, setActive] = useState<number>(currentShiIndex())
   const ribbonRef = useRef<HTMLElement>(null)
 
@@ -64,7 +64,7 @@ export function TimeRibbon() {
 
   return (
     <aside ref={ribbonRef} className="vitalog-ribbon" aria-label="十二时辰导航">
-      {SHICHEN.map((s, i) => {
+      {shichenData.map((s, i) => {
         const isCurrent = i === active
         const start = s.range.split(' — ')[0]
         return (

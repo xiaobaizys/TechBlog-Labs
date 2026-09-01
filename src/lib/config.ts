@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { redis } from "@/lib/redis";
 
 // ============================================================
 // 默认配置
@@ -15,12 +16,14 @@ const DEFAULTS: Record<string, string> = {
 };
 
 // ============================================================
-// 内存缓存
+// 多级缓存：内存（per-process）+ Redis（跨进程共享）
 // ============================================================
 
-let cache: Record<string, string> | null = null;
-let cacheTime = 0;
-const CACHE_TTL = 60_000; // 60秒缓存
+let memCache: Record<string, string> | null = null;
+let memCacheTime = 0;
+const MEM_CACHE_TTL = 300_000; // 5分钟（个人博客配置变更不频繁）
+const REDIS_CACHE_TTL = 600; // 10分钟 Redis TTL
+const REDIS_KEY = "config:all";
 
 // ============================================================
 // API
@@ -28,10 +31,6 @@ const CACHE_TTL = 60_000; // 60秒缓存
 
 /**
  * 获取单个配置值（带缓存）
- *
- * @example
- * const title = await getConfig("site_title");      // → "TechBlog Labs"
- * const perPage = await getConfig("posts_per_page"); // → "9"
  */
 export async function getConfig(key: string): Promise<string> {
   const all = await getAllConfig();
@@ -39,16 +38,39 @@ export async function getConfig(key: string): Promise<string> {
 }
 
 /**
- * 获取所有配置（带 TTL 缓存）
+ * 获取所有配置（带多级 TTL 缓存）
  *
- * 简化版本：不依赖版本号检查，仅基于时间过期。
- * 60 秒 TTL 对于个人博客完全足够，省去每次缓存命中时的额外查询。
+ *  两级缓存策略：
+ *   1. 进程内内存缓存（最快，TTL 5min）
+ *   2. Redis 缓存（跨进程共享，TTL 10min）
+ *   3. 数据库（最终兜底）
+ *
+ *  命中任一缓存层即返回，不穿透到下一层。
+ *  clearConfigCache() 同时清空内存 + Redis。
  */
 export async function getAllConfig(): Promise<Record<string, string>> {
-  if (cache && cacheTime > Date.now() - CACHE_TTL) {
-    return { ...DEFAULTS, ...cache };
+  // L1：内存缓存
+  if (memCache && memCacheTime > Date.now() - MEM_CACHE_TTL) {
+    return { ...DEFAULTS, ...memCache };
   }
 
+  // L2：Redis 缓存
+  const r = redis();
+  if (r) {
+    try {
+      const raw = await r.get(REDIS_KEY);
+      if (raw) {
+        const redisCache = JSON.parse(raw) as Record<string, string>;
+        memCache = redisCache;
+        memCacheTime = Date.now();
+        return { ...DEFAULTS, ...redisCache };
+      }
+    } catch {
+      // Redis 不可用，降级到数据库
+    }
+  }
+
+  // L3：数据库
   const rows = await prisma.systemConfig.findMany({
     select: { key: true, value: true },
   });
@@ -58,8 +80,17 @@ export async function getAllConfig(): Promise<Record<string, string>> {
     config[row.key] = row.value;
   }
 
-  cache = config;
-  cacheTime = Date.now();
+  // 回填两级缓存
+  memCache = config;
+  memCacheTime = Date.now();
+
+  if (r) {
+    try {
+      await r.set(REDIS_KEY, JSON.stringify(config), "EX", REDIS_CACHE_TTL);
+    } catch {
+      // Redis 写入失败不影响主流程
+    }
+  }
 
   return { ...DEFAULTS, ...config };
 }
@@ -84,7 +115,16 @@ export async function getBoolConfig(key: string, fallback: boolean = false): Pro
 /**
  * 清除配置缓存（在更新配置后调用）
  */
-export function clearConfigCache(): void {
-  cache = null;
-  cacheTime = 0;
+export async function clearConfigCache(): Promise<void> {
+  memCache = null;
+  memCacheTime = 0;
+
+  const r = redis();
+  if (r) {
+    try {
+      await r.del(REDIS_KEY);
+    } catch {
+      // Redis 删除失败不影响主流程
+    }
+  }
 }

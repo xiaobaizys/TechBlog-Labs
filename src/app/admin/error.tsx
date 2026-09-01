@@ -3,13 +3,13 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { AlertTriangle, RotateCw, ArrowLeft } from "lucide-react";
+import { reportError } from "@/lib/sentry";
 
 /**
  * /admin 错误兜底（Error Boundary）
  *
- *  - 与主站 error.tsx 区分样式：管理后台更克制（不要 500 大字）
- *  - requireAdmin() 抛错 / 子页面异常都会路由到这里
- *  - 不暴露内部错误细节给非终端用户
+ *  - 统计页面异常会路由到这里
+ *  - 不暴露内部错误细节给终端用户
  */
 export default function AdminError({
   error,
@@ -20,6 +20,12 @@ export default function AdminError({
 }) {
   useEffect(() => {
     console.error("[AdminErrorBoundary]", error);
+
+    // 上报到 Sentry
+    reportError(error, {
+      boundary: "AdminError",
+      digest: error.digest,
+    });
   }, [error]);
 
   return (
@@ -31,10 +37,10 @@ export default function AdminError({
           </div>
           <div className="flex-1">
             <h1 className="font-serif text-xl font-semibold text-[rgb(var(--foreground))]">
-              管理后台出错了
+              页面出错了
             </h1>
             <p className="mt-1 text-sm text-[rgb(var(--muted-foreground))]">
-              这次操作没能完成。你可以重试，或先回后台首页。
+              这次操作没能完成。你可以重试，或先回统计首页。
             </p>
             {error.digest && (
               <p className="mt-2 font-mono text-[10px] tracking-wider text-[rgb(var(--muted-foreground))]/70">
@@ -58,7 +64,7 @@ export default function AdminError({
             className="inline-flex items-center justify-center gap-2 rounded-lg border border-[rgb(var(--border))] px-4 py-2 text-sm font-medium text-[rgb(var(--muted-foreground))] transition-colors hover:border-amber-bright/50 hover:text-amber-bright"
           >
             <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2.2} />
-            返回后台首页
+            返回统计首页
           </Link>
         </div>
       </div>

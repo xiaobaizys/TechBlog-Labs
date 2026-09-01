@@ -14,6 +14,7 @@ export type BlogCardPost = {
   featured: boolean;
   viewCount: number;
   likeCount: number;
+  commentCount: number; // 新增：评论数
   publishedAt: string | null;
   createdAt: string;
   author: {
@@ -28,6 +29,8 @@ export type BlogCardPost = {
   }[];
   highlight?: { text: string; hit: boolean }[] | null;
 };
+
+const BLUR_PLACEHOLDER = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjM4NCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjVmNWY1Ii8+PC9zdmc+";
 
 export function BlogCard({
   post,
@@ -44,6 +47,7 @@ export function BlogCard({
   const date = new Date(dateStr);
 
   const isLarge = featured;
+  const isAboveFold = index < 6;
 
   return (
     <motion.article
@@ -80,7 +84,9 @@ export function BlogCard({
             className={`w-full object-cover transition-transform duration-500 group-hover:scale-105 ${
               isLarge ? "h-full" : "h-48"
             }`}
-            loading="lazy"
+            placeholder="blur"
+            blurDataURL={BLUR_PLACEHOLDER}
+            priority={isAboveFold}
           />
           {/* hover 时 overlay 渐现 */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
@@ -160,6 +166,15 @@ export function BlogCard({
               day: "numeric",
             })}
           </time>
+
+          {/* 热度值 */}
+          <span className="flex items-center gap-1 transition-colors group-hover:text-amber-bright/80" title={`热度: ${post.viewCount + post.likeCount * 10 + post.commentCount * 20}`}>
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+            </svg>
+            {post.viewCount + post.likeCount * 10 + post.commentCount * 20}
+          </span>
 
           <span className="flex items-center gap-1 transition-colors group-hover:text-amber-bright/80">
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

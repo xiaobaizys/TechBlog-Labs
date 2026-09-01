@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { DataLoader } from "@/components/ui/DataLoader";
-import { registerSW } from "@/lib/cache/serviceWorker";
 import { useHideAIChat } from "@/hooks/useHideAIChat";
 
 const AIChatButton = dynamic(
@@ -28,17 +27,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const hideAIChat = useHideAIChat();
 
-  useEffect(() => {
-    registerSW().catch(() => {});
-  }, []);
-
   return (
     <>
       {children}
       {showLoader && (
         <DataLoader
           onComplete={() => setShowLoader(false)}
-          minDuration={600}
           maxDuration={3000}
         />
       )}

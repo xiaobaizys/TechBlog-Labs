@@ -1,19 +1,26 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import {
+  getActiveHomeBackgrounds,
+} from "@/lib/home-backgrounds-cache";
 
 /**
  * GET /api/home-backgrounds — 获取所有启用的首页背景图片（公开接口）
+ *
+ * 使用多级缓存（内存 + Redis）减少数据库查询；
+ * 响应头带 stale-while-revalidate，允许 CDN/浏览器在过期后先用旧数据。
  */
 export async function GET() {
   try {
-    // 检查 HomeBackground 表是否存在
-    const backgrounds = await prisma.homeBackground.findMany({
-      where: { isActive: true },
-      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-      select: { url: true, name: true },
-    });
+    const backgrounds = await getActiveHomeBackgrounds();
 
-    return NextResponse.json({ success: true, data: backgrounds });
+    return NextResponse.json(
+      { success: true, data: backgrounds },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+        },
+      }
+    );
   } catch (error) {
     console.error("[GET /api/home-backgrounds]", error);
     const message =

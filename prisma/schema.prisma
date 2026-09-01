@@ -32,13 +32,13 @@ enum PostStatus {
 // ================================================================
 
 model User {
-  id             String         @id @default(cuid())
+  id             String          @id @default(cuid())
   name           String?
-  email          String?        @unique
+  email          String?         @unique
   emailVerified  DateTime?
   image          String?
   hashedPassword String?
-  role           UserRole       @default(USER)
+  role           UserRole        @default(USER)
   accounts       Account[]
   sessions       Session[]
   posts          Post[]
@@ -47,8 +47,8 @@ model User {
   comments       Comment[]
   aiQuotas       AIQuota[]
   aiChatSessions AIChatSession[]
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   deletedAt      DateTime?
 }
 
@@ -96,26 +96,27 @@ model VerificationToken {
 // ================================================================
 
 model Post {
-  id          String     @id @default(cuid())
+  id          String      @id @default(cuid())
   title       String
-  slug        String     @unique
-  content     String     @db.Text
+  slug        String      @unique
+  content     String      @db.Text
   excerpt     String?
   coverImage  String?
-  published   Boolean    @default(false)
-  featured    Boolean    @default(false)
-  viewCount   Int        @default(0)
-  likeCount   Int        @default(0)
-  status      PostStatus @default(DRAFT)
+  summary     String?     @db.Text // AI 生成的文章摘要
+  published   Boolean     @default(false)
+  featured    Boolean     @default(false)
+  viewCount   Int         @default(0)
+  likeCount   Int         @default(0)
+  status      PostStatus  @default(DRAFT)
   authorId    String
-  author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author      User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
   tags        TagOnPost[]
   comments    Comment[]
   likes       PostLike[]
   chunks      PostChunk[]
   publishedAt DateTime?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
   deletedAt   DateTime?
 
   @@index([slug])
@@ -155,8 +156,8 @@ model Tag {
 model TagOnPost {
   postId String
   tagId  String
-  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  tag    Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([postId, tagId])
 }
@@ -226,27 +227,27 @@ model LifeLike {
 // ================================================================
 
 model Project {
-  id          String        @id @default(cuid())
-  title       String
-  slug        String        @unique
-  description String        @db.Text
-  coverImage  String?
-  techStack   String[]
-  repoUrl     String?
-  demoUrl     String?
-  downloadUrl String?
+  id             String        @id @default(cuid())
+  title          String
+  slug           String        @unique
+  description    String        @db.Text
+  coverImage     String?
+  techStack      String[]
+  repoUrl        String?
+  demoUrl        String?
+  downloadUrl    String?
   sourceFilePath String?
-  content     String?       @db.Text
-  viewCount   Int           @default(0)
-  likeCount   Int           @default(0)
-  isPublic    Boolean       @default(true)
-  featured    Boolean       @default(false)
-  sortOrder   Int           @default(0)
-  authorId    String
-  author      User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  likes       ProjectLike[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  content        String?       @db.Text
+  viewCount      Int           @default(0)
+  likeCount      Int           @default(0)
+  isPublic       Boolean       @default(true)
+  featured       Boolean       @default(false)
+  sortOrder      Int           @default(0)
+  authorId       String
+  author         User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes          ProjectLike[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@index([authorId])
   @@index([createdAt])
@@ -302,13 +303,13 @@ model AIQuota {
 // ================================================================
 
 model PostChunk {
-  id        String   @id @default(cuid())
-  postId    String
+  id         String   @id @default(cuid())
+  postId     String
   chunkIndex Int
-  content   String   @db.Text
-  embedding String?  @db.Text
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  content    String   @db.Text
+  embedding  String?  @db.Text
+  post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
 
   @@index([postId])
   @@index([postId, chunkIndex])
@@ -320,10 +321,10 @@ model PostChunk {
 
 model AiProvider {
   id        String   @id @default(cuid())
-  name      String   // 显示名称，如 "DeepSeek"
-  baseUrl   String   // API 地址，如 "https://api.deepseek.com"
-  apiKey    String   // API 密钥
-  model     String   // 模型名，如 "deepseek-chat"
+  name      String // 显示名称，如 "DeepSeek"
+  baseUrl   String // API 地址，如 "https://api.deepseek.com"
+  apiKey    String // API 密钥
+  model     String // 模型名，如 "deepseek-chat"
   isActive  Boolean  @default(false) // 是否当前使用
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -335,8 +336,8 @@ model AiProvider {
 
 model HomeBackground {
   id        String   @id @default(cuid())
-  url       String   // 图片 URL 或路径
-  name      String   // 图片名称/描述
+  url       String // 图片 URL 或路径
+  name      String // 图片名称/描述
   sortOrder Int      @default(0) // 排序
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -347,13 +348,13 @@ model HomeBackground {
 }
 
 model AIChatSession {
-  id        String         @id @default(cuid())
+  id        String          @id @default(cuid())
   userId    String
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String         @default("新对话")
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String          @default("新对话")
   messages  AIChatMessage[]
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 
   @@index([userId])
   @@index([updatedAt])
@@ -363,11 +364,216 @@ model AIChatMessage {
   id        String        @id @default(cuid())
   sessionId String
   session   AIChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  role      String        // "user" | "assistant"
+  role      String // "user" | "assistant"
   content   String        @db.Text
   sources   String?       @db.Text // JSON: [{title, slug}]
   createdAt DateTime      @default(now())
 
   @@index([sessionId])
+  @@index([createdAt])
+}
+
+// ================================================================
+// 访客统计
+// ================================================================
+
+// 单次页面访问记录（用于细粒度分析，如页面排行）
+model Visit {
+  id        String   @id @default(cuid())
+  visitorId String // IP + UserAgent 的哈希，用于识别独立访客
+  sessionId String? // 浏览器会话 ID（可选，前端生成）
+  page      String   @db.Text // 访问的页面路径，如 /blog/hello-world
+  referer   String?  @db.Text
+  userAgent String?  @db.Text
+  ip        String?  @db.VarChar(45) // 访客 IP（IPv4/IPv6）
+  country   String?  @db.VarChar(50) // 国家
+  province  String?  @db.VarChar(50) // 省份
+  city      String?  @db.VarChar(50) // 城市
+  createdAt DateTime @default(now())
+
+  @@index([visitorId])
+  @@index([createdAt])
+  @@index([page])
+  @@index([visitorId, createdAt])
+  @@index([province])
+  // 复合索引：用于按 userAgent LIKE 聚合计数（浏览器/操作系统分布）
+  @@index([userAgent, createdAt])
+  // 省级下钻：按省份 + 城市筛选
+  @@index([province, city])
+  // 来源分析：按 referer 聚合
+  @@index([referer])
+  // 城市筛选：WHERE city IS NOT NULL
+  @@index([city])
+}
+
+// 每日汇总（用于趋势图与总览卡片，避免每次都全表扫描 Visit）
+model DailyStats {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date // 当天 0 点（仅日期）
+  visitors  Int      @default(0) // 当日独立访客数
+  pageViews Int      @default(0) // 当日页面浏览量
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([date])
+  @@index([date])
+}
+
+// ================================================================
+// 告警系统
+// ================================================================
+
+model AlertRule {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  type        String // threshold, anomaly, spike
+  metric      String // visitors, pageviews, errors
+  condition   String // gt, lt, eq, spike_up, spike_down
+  threshold   Float
+  timeWindow  Int // 分钟
+  enabled     Boolean  @default(true)
+  channels    String   @db.Text // JSON: [{type, config}]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  events AlertEvent[]
+
+  @@index([enabled])
+}
+
+model AlertEvent {
+  id           String    @id @default(cuid())
+  ruleId       String
+  rule         AlertRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  ruleName     String
+  metric       String
+  currentValue Float
+  threshold    Float
+  message      String    @db.Text
+  acknowledged Boolean   @default(false)
+  notifiedAt   DateTime? // 最后通知时间
+  createdAt    DateTime  @default(now())
+
+  @@index([ruleId])
+  @@index([acknowledged])
+  @@index([createdAt])
+}
+
+// ================================================================
+// A/B 测试系统
+// ================================================================
+
+model ABExperiment {
+  id                String    @id @default(cuid())
+  name              String
+  description       String?   @db.Text
+  status            String    @default("draft") // draft, running, paused, completed
+  targetPages       String    @db.Text // JSON: ["page1", "page2"]
+  trafficAllocation Int       @default(100) // 0-100
+  startDate         DateTime  @default(now())
+  endDate           DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  variants    ABVariant[]
+  conversions ABConversion[]
+
+  @@index([status])
+}
+
+model ABVariant {
+  id           String       @id @default(cuid())
+  experimentId String
+  experiment   ABExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  name         String
+  description  String?
+  weight       Int          @default(50) // 权重
+  changes      String       @db.Text // JSON: [{type, selector, content, styles}]
+  createdAt    DateTime     @default(now())
+
+  assignments ABAssignment[]
+  conversions ABConversion[]
+
+  @@index([experimentId])
+}
+
+model ABAssignment {
+  id           String    @id @default(cuid())
+  experimentId String
+  variantId    String
+  variant      ABVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  visitorId    String
+  createdAt    DateTime  @default(now())
+
+  @@unique([experimentId, visitorId])
+  @@index([experimentId])
+  @@index([variantId])
+  @@index([visitorId])
+}
+
+model ABConversion {
+  id           String       @id @default(cuid())
+  experimentId String
+  experiment   ABExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  variantId    String
+  variant      ABVariant    @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  visitorId    String
+  event        String // click, submit, purchase
+  value        Float?
+  createdAt    DateTime     @default(now())
+
+  @@index([experimentId])
+  @@index([variantId])
+  @@index([visitorId])
+  @@index([event])
+}
+
+// ================================================================
+// 友情链接
+// ================================================================
+
+enum FriendLinkStatus {
+  PENDING // 待审核
+  APPROVED // 已通过
+  REJECTED // 已拒绝
+}
+
+model FriendLink {
+  id          String           @id @default(cuid())
+  name        String // 网站名称
+  url         String // 网站链接
+  avatar      String? // 头像/Logo URL
+  favicon     String? // 网站 favicon URL
+  description String? // 网站描述
+  category    String? // 分类（如：技术博客、工具网站、个人主页）
+  contact     String? // 联系方式（邮箱或社交账号）
+  sortOrder   Int              @default(0) // 排序权重，越小越靠前
+  isActive    Boolean          @default(true) // 是否启用
+  status      FriendLinkStatus @default(APPROVED) // 状态
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([sortOrder])
+  @@index([isActive])
+  @@index([status])
+  @@index([category])
+}
+
+model FriendLinkApplication {
+  id           String           @id @default(cuid())
+  name         String // 网站名称
+  url          String // 网站链接
+  avatar       String? // 头像/Logo URL
+  description  String? // 网站描述
+  category     String? // 申请分类
+  contact      String? // 联系方式
+  message      String? // 申请留言
+  status       FriendLinkStatus @default(PENDING)
+  rejectReason String? // 拒绝原因
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([status])
   @@index([createdAt])
 }

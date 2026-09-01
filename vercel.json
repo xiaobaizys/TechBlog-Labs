@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/admin/stats/rebuild-daily?days=7",
+      "schedule": "10 0 * * *"
+    }
+  ]
+}

@@ -3,7 +3,9 @@
 import { useRef, useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion'
+import Image from 'next/image'
 import { UserAvatar } from '@/components/user/UserAvatar'
+import type { HomeBackgroundItem } from '@/lib/home-backgrounds-cache'
 
 /**
  * 首页 Hero 开场（参考 taozhiyy.top 风格）
@@ -19,10 +21,12 @@ import { UserAvatar } from '@/components/user/UserAvatar'
  *  - 下方面板淡入
  */
 
-export function HeroIntro() {
+export function HeroIntro({ homeBackgrounds }: { homeBackgrounds: HomeBackgroundItem[] }) {
   const ref = useRef<HTMLElement>(null)
   const [bgIndex, setBgIndex] = useState(0)
-  const [heroBgs, setHeroBgs] = useState<string[]>([])
+  const [heroBgs, setHeroBgs] = useState<string[]>(() =>
+    homeBackgrounds.map((b) => b.url)
+  )
   const { data: session } = useSession()
   const user = session?.user
   const { scrollYProgress } = useScroll({
@@ -30,8 +34,9 @@ export function HeroIntro() {
     offset: ['start start', 'end start'],
   })
 
-  // 从数据库读取启用的背景图片
+  // 兜底：服务端未返回背景图时，客户端再尝试请求一次（兼容开发/无数据场景）
   useEffect(() => {
+    if (heroBgs.length > 0) return
     fetch('/api/home-backgrounds')
       .then((r) => r.json())
       .then((json) => {
@@ -40,7 +45,7 @@ export function HeroIntro() {
         }
       })
       .catch(() => {})
-  }, [])
+  }, [heroBgs.length])
 
   // 背景图滚动：轻微放大 + 整体倾斜 + 缩小，揭示下方
   const bgScale = useTransform(scrollYProgress, [0, 1], [1.0, 0.85])
@@ -95,7 +100,19 @@ export function HeroIntro() {
       <motion.div className="vitalog-hero-intro__bg" style={{ scale: bgScale, rotate: bgRotate, y: bgY }} aria-hidden>
         {heroBgs.length > 0 ? (
           <AnimatePresence initial={false}>
-            <motion.img key={bgIndex} src={heroBgs[bgIndex]} alt="" className="vitalog-hero-intro__bg-img" initial={{ opacity: 0, scale: 1.05 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7, ease: [0.22, 0.61, 0.36, 1] }} />
+            <motion.div key={bgIndex} className="vitalog-hero-intro__bg-img" initial={{ opacity: 0, scale: 1.05 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.7, ease: [0.22, 0.61, 0.36, 1] }}>
+              <Image
+                src={heroBgs[bgIndex]}
+                alt=""
+                fill
+                sizes="100vw"
+                quality={85}
+                priority={bgIndex === 0}
+                className="object-cover"
+                placeholder="blur"
+                blurDataURL="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiMyMjIiLz48L3N2Zz4="
+              />
+            </motion.div>
           </AnimatePresence>
         ) : (
           <div className="vitalog-hero-intro__bg-img vitalog-hero-intro__bg-fallback" />

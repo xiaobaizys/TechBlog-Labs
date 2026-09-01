@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { clearHomeBackgroundsCache } from "@/lib/home-backgrounds-cache";
 
 /**
  * GET /api/admin/home-backgrounds — 列出所有首页背景图片
@@ -52,6 +53,9 @@ export async function POST(request: NextRequest) {
         isActive: isActive ?? true,
       },
     });
+
+    // 数据变更后清空缓存，让前端立即生效
+    await clearHomeBackgroundsCache();
 
     return NextResponse.json({ success: true, data: bg });
   } catch (error) {

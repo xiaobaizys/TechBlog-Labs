@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { AlertTriangle, RotateCw, Home } from "lucide-react";
+import { reportError } from "@/lib/sentry";
 
 /**
  * 主站错误兜底（Error Boundary）
@@ -20,8 +21,14 @@ export default function MainError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // 上报到控制台；后续可接入 Sentry / 自家埋点
+    // 上报到控制台
     console.error("[MainErrorBoundary]", error);
+
+    // 上报到 Sentry
+    reportError(error, {
+      boundary: "MainError",
+      digest: error.digest,
+    });
   }, [error]);
 
   return (

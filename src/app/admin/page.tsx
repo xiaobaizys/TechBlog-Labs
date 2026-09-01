@@ -1,29 +1,24 @@
 import { Suspense } from "react";
-import { requireAdmin } from "@/lib/auth/requireAdmin";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 
 /**
- * /admin · 管理后台首页
+ * /admin · 站点统计首页（公开页面）
  *
- *  - requireAdmin() 守卫：未登录跳 /login，非 ADMIN 跳 /
+ *  - 无需登录，所有人均可访问
  *  - 顶部 4 个数据卡：博客 / 评论 / 用户 / 浏览量（直接查 DB 避免循环 fetch）
- *  - 6 张快捷入口卡：仪表盘 / 文章 / 项目 / 评论 / 用户 / 配置
- *  - 底部"系统信息"块：当前时间、角色、数据库连接状态
- *
- *  与 /admin/dashboard 的区别：
- *  - /admin/dashboard：纯数据可视化（图表 + 趋势）
- *  - /admin（本页）：导航 + 概览，作为所有 admin 子路由的总入口
+ *  - 快捷入口卡：仪表盘 / 访客地图 / 访客分析
+ *  - 底部"系统信息"块
  *
  *  优化：统计区块用 Suspense 包裹做流式加载，页面骨架先渲染。
  */
 export const dynamic = "force-dynamic";
 
 /**
- * 管理后台 SEO：禁止索引
+ * 站点统计 SEO
  */
 export const metadata = {
-  title: "管理后台",
+  title: "站点统计",
   robots: { index: false, follow: false },
 };
 
@@ -52,26 +47,23 @@ async function getStats(): Promise<DashStats> {
 }
 
 export default async function AdminIndexPage() {
-  await requireAdmin();
-
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:py-12">
       {/* 头部（立刻渲染，不依赖数据库） */}
       <header className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-amber-bright/80 font-mono mb-2">
-            — Admin Console
+            — Site Stats
           </p>
           <h1 className="font-serif text-3xl font-semibold tracking-tight">
-            管理后台
+            站点统计
           </h1>
           <p className="mt-1.5 text-sm text-[rgb(var(--muted-foreground))]">
-            欢迎回来。所有数据均为实时统计。
+            所有数据均为实时统计。
           </p>
         </div>
         <div className="text-xs text-[rgb(var(--muted-foreground))] sm:text-right">
           <div>{new Date().toLocaleString("zh-CN", { hour12: false })}</div>
-          <div className="mt-0.5">已登录 · 管理员权限</div>
         </div>
       </header>
 
@@ -108,72 +100,139 @@ async function AdminContent() {
       {/* 4 个数据卡 */}
       <section className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatTile label="博客文章" value={stats.totalPosts} accent="amber" href="/admin/posts" />
-        <StatTile
-          label="评论"
-          value={stats.totalComments}
-          accent="sky"
-          href="/admin/comments"
-          badge={stats.pendingComments > 0 ? `${stats.pendingComments} 待审` : undefined}
-        />
+        <StatTile label="评论" value={stats.totalComments} accent="sky" href="/admin/comments" />
         <StatTile label="注册用户" value={stats.totalUsers} accent="emerald" href="/admin/users" />
         <StatTile label="总浏览量" value={stats.totalViews} accent="violet" href="/admin/dashboard" />
       </section>
 
-      {/* 6 个快捷入口 */}
+      {/* 内容管理 */}
       <section className="mt-8">
         <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-[rgb(var(--muted-foreground))]">
-          快捷入口
+          内容管理
         </h2>
         <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           <AdminLink
-            href="/admin/dashboard"
-            title="仪表盘"
-            desc="近 7 日文章 / 评论趋势 + 热门文章 Top 5"
-            icon="📊"
-          />
-          <AdminLink
             href="/admin/posts"
             title="文章管理"
-            desc="发布、编辑、删除博客文章"
+            desc="创建、编辑、删除博客文章"
             icon="📝"
-            badge={stats.drafts > 0 ? `${stats.drafts} 草稿` : undefined}
           />
           <AdminLink
             href="/admin/projects"
             title="项目管理"
-            desc="维护项目作品集、Tech Stack、演示链接"
+            desc="管理项目展示"
             icon="🚀"
           />
           <AdminLink
             href="/admin/comments"
             title="评论管理"
-            desc="审核、批准、删除用户评论"
+            desc="审核、回复、删除评论"
             icon="💬"
-            badge={stats.pendingComments > 0 ? `${stats.pendingComments} 待审` : undefined}
           />
           <AdminLink
             href="/admin/users"
             title="用户管理"
-            desc="查看用户列表、调整角色、封禁账号"
+            desc="查看和管理注册用户"
             icon="👥"
           />
           <AdminLink
-            href="/admin/ai-keys"
-            title="AI 提供商"
-            desc="管理 AI 助手 API 密钥与提供商切换"
-            icon="🤖"
+            href="/admin/life"
+            title="生活分享管理"
+            desc="管理用户发布的生活分享"
+            icon="🌿"
+          />
+          <AdminLink
+            href="/admin/friends"
+            title="友情链接管理"
+            desc="管理友情链接和审核用户申请"
+            icon="🔗"
+          />
+        </div>
+      </section>
+
+      {/* 站点设置 */}
+      <section className="mt-8">
+        <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-[rgb(var(--muted-foreground))]">
+          站点设置
+        </h2>
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          <AdminLink
+            href="/admin/config"
+            title="站点配置"
+            desc="修改站点标题、描述等设置"
+            icon="⚙️"
           />
           <AdminLink
             href="/admin/home-backgrounds"
             title="首页背景"
-            desc="管理首页 Hero 区域背景图片"
+            desc="管理首页背景图片"
             icon="🖼️"
           />
           <AdminLink
-            href="/admin/config"
-            title="站点配置"
-            desc="网站标题、描述、社交链接、SEO 等"
-            icon="⚙️"
+            href="/admin/ai-keys"
+            title="AI 密钥"
+            desc="管理 AI 服务的 API 密钥"
+            icon="🔑"
+          />
+        </div>
+      </section>
+
+      {/* 统计分析 */}
+      <section className="mt-8">
+        <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-[rgb(var(--muted-foreground))]">
+          统计分析
+        </h2>
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          <AdminLink
+            href="/admin/dashboard"
+            title="数据看板"
+            desc="近 7 日文章 / 评论趋势 + 热门文章 Top 5"
+            icon="📊"
+          />
+          <AdminLink
+            href="/admin/visitor-map"
+            title="访客地图"
+            desc="查看访客地理分布、省份排行、热门城市"
+            icon="🗺️"
+          />
+          <AdminLink
+            href="/stats"
+            title="访客分析"
+            desc="时间分布、设备统计、热门页面、来源分析"
+            icon="📈"
+          />
+        </div>
+      </section>
+
+      {/* 系统监控 */}
+      <section className="mt-8">
+        <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-[rgb(var(--muted-foreground))]">
+          系统监控
+        </h2>
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          <AdminLink
+            href="/admin/monitor"
+            title="系统监控"
+            desc="查看服务器状态、性能指标"
+            icon="📡"
+          />
+          <AdminLink
+            href="/admin/cache"
+            title="缓存管理"
+            desc="查看和清理缓存"
+            icon="💾"
+          />
+          <AdminLink
+            href="/admin/alerts"
+            title="告警管理"
+            desc="查看和管理系统告警"
+            icon="🔔"
+          />
+          <AdminLink
+            href="/admin/ab-testing"
+            title="A/B 测试"
+            desc="管理页面 A/B 测试"
+            icon="🧪"
           />
         </div>
       </section>

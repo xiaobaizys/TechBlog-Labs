@@ -22,18 +22,56 @@ function GithubIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+/* RSS 图标 */
+function RssIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M4 11a9 9 0 0 1 9 9" />
+      <path d="M4 4a16 16 0 0 1 16 16" />
+      <circle cx="5" cy="19" r="1" />
+    </svg>
+  );
+}
+
 /**
- * 站点页脚 SiteFooter（极简版）
+ * 站点页脚 SiteFooter（合规版）
  *
- *  两行居中：
- *   - © {year} 生息日志 / VitaLog 保留所有权利。· 隐私政策 · GitHub · 微信小程序
- *   - Powered by 逃之夭夭 & 哔哩哔哩
+ *  四行居中：
+ *   - 第一行：© {year} 生息日志 保留所有权利。· 隐私政策 · GitHub · RSS · 笑声文档工具箱
+ *   - 第二行：ICP备案信息（工信部备案）
+ *   - 第三行：公安网安备案信息（粤公网安备案）
+ *   - 第四行：Powered by 逃之夭夭 & 哔哩哔哩
  *
  *  视觉：深色背景 + 顶部虚线分隔 + 居中文字，链接高亮色
  *  交互：点击「微信小程序」弹出二维码弹窗（用 <dialog> 语义）
+ *  合规：满足工信部ICP备案+公安网安备案双合规排版要求
  */
+
+/* ============================================================
+ *  备案信息配置（已配置完成）
+ * ============================================================ */
 const GITHUB_URL = "https://github.com/xiaobaizys";
 const WECHAT_QR = "/image/%E4%BA%8C%E7%BB%B4%E7%A0%81.jpg"; // 微信小程序二维码（已移入 public/image/）
+
+// ICP备案配置 - 请替换为真实备案号
+const ICP_BEIAN_NUMBER = "粤ICP备2026072693号-2"; // 替换为真实ICP备案号
+const ICP_BEIAN_URL = "https://beian.miit.gov.cn/";
+
+// 公安网安备案配置 - 请替换为真实备案号
+const POLICE_BEIAN_NUMBER = "粤公网安备 44051302000288号"; // 替换为真实公安备案号
+const POLICE_BEIAN_URL = "https://beian.mps.gov.cn/#/query/webSearch";
+
+// 公安备案官方图标（PNG格式）
+const POLICE_ICON_URL = "/icons/备案图标.png"; // 公安备案图标路径
 
 export function SiteFooter() {
   const year = new Date().getFullYear();
@@ -70,8 +108,9 @@ export function SiteFooter() {
   return (
     <footer className="vitalog-footer" aria-label="站点页脚">
       <div className="vitalog-footer__inner">
+        {/* 第一行：版权信息和链接 */}
         <p className="vitalog-footer__line">
-          <span>© {year} 生息日志 保留所有权利。</span>
+          <span>©2026 保留所有权利。</span>
           <span className="vitalog-footer__sep" aria-hidden>
             ·
           </span>
@@ -102,6 +141,23 @@ export function SiteFooter() {
             ·
           </span>
           <a
+            href="/rss.xml"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="vitalog-footer__link"
+            data-cursor="hover"
+            title="RSS 订阅"
+          >
+            <RssIcon
+              className="vitalog-footer__link-icon"
+              aria-hidden
+            />
+            RSS
+          </a>
+          <span className="vitalog-footer__sep" aria-hidden>
+            ·
+          </span>
+          <a
             href={WECHAT_QR}
             onClick={openQr}
             className="vitalog-footer__link"
@@ -110,26 +166,42 @@ export function SiteFooter() {
             笑声文档工具箱
           </a>
         </p>
-        <p className="vitalog-footer__line vitalog-footer__line--powered">
-          Powered by{" "}
+
+        {/* 第二行：ICP工信部备案信息 */}
+        <p className="vitalog-footer__line vitalog-footer__line--beian">
+          <span>©2026 | ICP备案号：</span>
           <a
-            href="https://taozhiyy.top/"
+            href={ICP_BEIAN_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="vitalog-footer__link"
             data-cursor="hover"
+            title="工信部ICP备案查询"
           >
-            逃之夭夭
-          </a>{" "}
-          &{" "}
+            {ICP_BEIAN_NUMBER}
+          </a>
+        </p>
+
+        {/* 第三行：公安网安备案信息 */}
+        <p className="vitalog-footer__line vitalog-footer__line--beian">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={POLICE_ICON_URL}
+            alt="公安备案图标"
+            className="vitalog-footer__police-icon"
+            width="16"
+            height="16"
+            aria-hidden
+          />
           <a
-            href="https://www.bilibili.com/"
+            href={POLICE_BEIAN_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="vitalog-footer__link"
             data-cursor="hover"
+            title="全国互联网安全管理服务平台"
           >
-            哔哩哔哩
+            {POLICE_BEIAN_NUMBER}
           </a>
         </p>
       </div>

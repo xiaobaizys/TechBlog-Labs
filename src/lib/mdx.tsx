@@ -2,6 +2,7 @@ import { MDXRemote, type MDXRemoteProps } from "next-mdx-remote/rsc";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import rehypeSlug from "rehype-slug";
+import GithubSlugger from "github-slugger";
 import Image from "next/image";
 import Link from "next/link";
 import type { ComponentPropsWithoutRef } from "react";
@@ -18,15 +19,20 @@ function MDXImage(props: ComponentPropsWithoutRef<"img">) {
   const w = typeof width === "number" ? width : 800;
   const h = typeof height === "number" ? height : 450;
 
-  // 外部图片直接用 img
+  const BLUR_PLACEHOLDER = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAwIiBoZWlnaHQ9IjQ1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjVmNWY1Ii8+PC9zdmc+";
+
+  // 外部图片用 next/image（需在 next.config.mjs 配置 remotePatterns）
   if (src.startsWith("http")) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
+      <Image
         src={src}
         alt={alt ?? ""}
-        className="rounded-lg border border-[rgb(var(--border))] my-8 w-full"
-        loading="lazy"
+        width={w}
+        height={h}
+        className="rounded-lg border border-[rgb(var(--border))] my-8 w-full object-cover"
+        sizes="(max-width: 768px) 100vw, 768px"
+        placeholder="blur"
+        blurDataURL={BLUR_PLACEHOLDER}
       />
     );
   }
@@ -39,6 +45,8 @@ function MDXImage(props: ComponentPropsWithoutRef<"img">) {
       height={h}
       className="rounded-lg border border-[rgb(var(--border))] my-8"
       sizes="(max-width: 768px) 100vw, 768px"
+      placeholder="blur"
+      blurDataURL={BLUR_PLACEHOLDER}
     />
   );
 }
@@ -197,21 +205,20 @@ export interface TocEntry {
 
 /**
  * 从 Markdown/MDX 文本中提取所有标题
+ *
+ * 使用 github-slugger 生成 id，与 rehype-slug（MDX 渲染管线）保持一致，
+ * 确保 TOC 点击跳转和滚动高亮能通过 getElementById 精确命中 DOM 标题。
  */
 export function extractToc(content: string): TocEntry[] {
   const headingRegex = /^(#{2,4})\s+(.+)$/gm;
   const toc: TocEntry[] = [];
+  const slugger = new GithubSlugger();
 
   let match: RegExpExecArray | null;
   while ((match = headingRegex.exec(content)) !== null) {
     const level = match[1].length;
-    const text = match[2].trim();
-    const id = text
-      .toLowerCase()
-      .replace(/<[^>]*>/g, "")
-      .replace(/[^\w一-鿿]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-
+    const text = match[2].trim().replace(/<[^>]*>/g, "");
+    const id = slugger.slug(text);
     toc.push({ id, text, level });
   }
 

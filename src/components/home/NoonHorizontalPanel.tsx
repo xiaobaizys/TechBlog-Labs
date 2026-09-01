@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { SHICHEN, DECO_SVG } from "@/lib/shichen";
+import { DECO_SVG, type Shichen } from "@/lib/shichen";
 
 /**
  * 辰巳午未 · 水平滚动面板
@@ -22,11 +22,12 @@ import { SHICHEN, DECO_SVG } from "@/lib/shichen";
  *   - window 'noon:enter' / 'noon:leave'
  */
 const NOON_INDICES = [4, 5, 6, 7] as const;
-const NOON_DATA = NOON_INDICES.map((i) => SHICHEN[i]);
 
-export function NoonHorizontalPanel() {
+export function NoonHorizontalPanel({ shichenData }: { shichenData: readonly Shichen[] }) {
   const pinRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
+
+  const noonData = NOON_INDICES.map((i) => shichenData[i]);
 
   useLayoutEffect(() => {
     const pin = pinRef.current;
@@ -38,7 +39,7 @@ export function NoonHorizontalPanel() {
     const ctx = gsap.context(() => {
       // 4 个真实 slide + 1 个尾部占位（提供右侧留白）
       // tween 只走 (n-1)*100vw，最后一个真实 slide 显示时右侧自带一屏留白
-      const slideCount = NOON_DATA.length;
+      const slideCount = noonData.length;
       const travel = (slideCount - 1) * window.innerWidth;
       const tween = gsap.to(track, {
         x: () => -travel,
@@ -71,8 +72,8 @@ export function NoonHorizontalPanel() {
               new CustomEvent("noon:progress", { detail: p })
             );
             const idx = Math.min(
-              NOON_DATA.length - 1,
-              Math.floor(p * NOON_DATA.length)
+              noonData.length - 1,
+              Math.floor(p * noonData.length)
             );
             window.dispatchEvent(
               new CustomEvent("noon:active", { detail: 4 + idx })
@@ -125,14 +126,14 @@ export function NoonHorizontalPanel() {
         </div>
 
         <div ref={trackRef} className="vitalog-noon-track">
-          {NOON_DATA.map((s, i) => (
+          {noonData.map((s, i) => (
             <NoonSlide
               key={s.char}
               s={s}
               globalIdx={NOON_INDICES[i]}
               pos={i}
-              total={NOON_DATA.length}
-              isLast={i === NOON_DATA.length - 1}
+              total={noonData.length}
+              isLast={i === noonData.length - 1}
             />
           ))}
           {/* 尾部占位 slide：tween 终点恰好停在"未"显示，spacer 跑出视口外 */}
@@ -153,7 +154,7 @@ function NoonSlide({
   total,
   isLast,
 }: {
-  s: (typeof NOON_DATA)[number];
+  s: Shichen;
   globalIdx: number;
   pos: number;
   total: number;

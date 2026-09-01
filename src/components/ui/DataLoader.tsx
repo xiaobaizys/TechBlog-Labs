@@ -23,7 +23,6 @@ type Phase = "idle" | "loading" | "complete";
 
 type DataLoaderProps = {
   onComplete?: () => void;
-  minDuration?: number;
   maxDuration?: number;
 };
 
@@ -55,11 +54,9 @@ export function markVisited(): void {
 
 export function DataLoader({
   onComplete,
-  minDuration = 800,
   maxDuration = 8000,
 }: DataLoaderProps) {
   const [progress, setProgress] = useState(0);
-  const startTime = useRef(Date.now());
   const completedRef = useRef(false);
 
   const complete = useCallback(() => {
@@ -70,21 +67,10 @@ export function DataLoader({
   }, [onComplete]);
 
   useEffect(() => {
-    startTime.current = Date.now();
-
     let completedCount = 0;
     const totalUrls = PRELOAD_URLS.length;
 
-    const tryComplete = () => {
-      const elapsed = Date.now() - startTime.current;
-      if (elapsed < minDuration) {
-        setTimeout(complete, minDuration - elapsed);
-      } else {
-        complete();
-      }
-    };
-
-    // 并行预取
+    // 并行预取：后台静默填充 IndexedDB 缓存，不阻塞首屏内容渲染
     PRELOAD_URLS.forEach(async (url) => {
       try {
         const res = await fetch(url);
@@ -93,65 +79,37 @@ export function DataLoader({
           await setCache(url, data, 5 * 60 * 1000);
         }
       } catch {
-        // 预取失败不影响
+        // 预取失败不影响主流程
       } finally {
         completedCount++;
         setProgress(Math.round((completedCount / totalUrls) * 100));
 
         if (completedCount >= totalUrls) {
-          tryComplete();
+          complete();
         }
       }
     });
 
-    // 超时保护
+    // 超时保护：即使预取失败也标记完成，避免顶部进度条长期占用
     const timeout = setTimeout(() => {
-      tryComplete();
+      complete();
     }, maxDuration);
 
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---- 加载画面 ----
+  // 非阻塞式进度指示：固定在顶部的一根细线，不遮挡内容
   return (
     <div
-      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[rgb(var(--background))]"
-      aria-label="正在加载生息日志"
+      className="fixed top-0 left-0 right-0 z-[9999] h-0.5 bg-transparent"
+      aria-label="正在预加载数据"
       role="status"
     >
-      {/* 背景装饰 */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-96 w-96 rounded-full bg-amber/5 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-64 rounded-full border border-amber/10 animate-ping" />
-      </div>
-
-      {/* 主内容 */}
-      <div className="relative z-10 text-center space-y-8">
-        <div className="space-y-3">
-          <h1 className="font-serif text-4xl md:text-5xl tracking-tight text-foreground">
-            生息日志
-            <span className="mx-1 text-amber">·</span>
-            <span className="text-amber">VitaLog</span>
-          </h1>
-          <p className="text-xs tracking-[0.3em] text-[rgb(var(--muted-foreground))] uppercase font-mono">
-            — Twelve Shichen —
-          </p>
-        </div>
-
-        {/* 进度条 */}
-        <div className="mx-auto w-48">
-          <div className="h-0.5 w-full rounded-full bg-[rgb(var(--border))] overflow-hidden">
-            <div
-              className="h-full bg-amber transition-all duration-700 ease-out"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <p className="mt-2 text-[10px] text-[rgb(var(--muted-foreground))] font-mono">
-            正在加载···
-          </p>
-        </div>
-      </div>
+      <div
+        className="h-full bg-amber transition-all duration-300 ease-out"
+        style={{ width: `${progress}%` }}
+      />
     </div>
   );
 }

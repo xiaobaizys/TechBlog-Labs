@@ -32,6 +32,10 @@ yarn-error.log*
 .env
 .env*.local
 .env*.private
+.env.production
+.env.development
+!.env.example
+!.env.local.example
 
 # vercel
 .vercel
@@ -67,3 +71,6 @@ nextjs-app-router-guide.md
 
 # test scripts
 /scripts/
+
+# local scratch build artifacts
+/temp-static/

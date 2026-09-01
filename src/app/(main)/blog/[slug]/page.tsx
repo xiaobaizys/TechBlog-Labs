@@ -2,15 +2,17 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { unstable_cache } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { appCache } from "@/lib/app-cache";
 import { MDXContent, extractToc, type TocEntry } from "@/lib/mdx";
 import { LikeButton } from "./like-button";
 import { ReadingProgress } from "./reading-progress";
 import { UserAvatar } from "@/components/user/UserAvatar";
 import { getNumberConfig, getBoolConfig } from "@/lib/config";
 import { ArrowLeft, Edit3 } from "lucide-react";
+import { ReadingModeToggle } from "./reading-mode-toggle";
+import { ArticleSummary } from "./article-summary";
 
 // 延迟加载评论区（首屏不可见 · 减少初始 JS 体积）
 const CommentSection = dynamic(
@@ -46,6 +48,22 @@ const CodeBlockCopy = dynamic(
   { ssr: false }
 );
 
+// 延迟加载相关文章推荐
+const RelatedPosts = dynamic(
+  () => import("@/components/blog/RelatedPosts").then((m) => m.RelatedPosts),
+  { ssr: false }
+);
+
+// 延迟加载分享按钮
+// 不再使用 dynamic({ ssr: false })，改为直接静态 import
+// 原因：dynamic ssr:false 在 App Router 中产生 BailoutToCSR 边界，
+// 与父级 Suspense 边界结合时在某些 chunk 加载顺序下会触发
+// NotFoundErrorBoundary 的渲染错误（错误堆栈停在 ShareButtons 内部 button）。
+// ShareButtons 本身就是 "use client" 组件，Next.js 会自动按需拆 chunk，
+// 不会增加首屏阻塞 JS 体积。
+import { ShareButtons } from "@/components/blog/ShareButtons";
+import { PosterGenerator } from "@/components/blog/PosterGenerator";
+
 // ============================================================
 // 类型
 // ============================================================
@@ -57,6 +75,7 @@ type PostData = {
   content: string;
   excerpt: string | null;
   coverImage: string | null;
+  summary: string | null;
   status: string;
   featured: boolean;
   viewCount: number;
@@ -76,37 +95,72 @@ type PostData = {
 
 // ============================================================
 // 数据获取（缓存 60s · 减少 generateMetadata + 页面组件的重复查库）
+//   - appCache：Redis 优先 → Data Cache 兜底
 // ============================================================
 
-const getCachedPost = unstable_cache(
-  async (slug: string) => {
-    return prisma.post.findUnique({
-      where: { slug, deletedAt: null },
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        content: true,
-        excerpt: true,
-        coverImage: true,
-        status: true,
-        featured: true,
-        viewCount: true,
-        likeCount: true,
-        publishedAt: true,
-        createdAt: true,
-        updatedAt: true,
-        author: { select: { id: true, name: true, image: true } },
-        tags: {
-          select: { tag: { select: { id: true, name: true, slug: true } } },
+type CachedPost = NonNullable<
+  Awaited<
+    ReturnType<
+      typeof prisma.post.findUnique<{
+        where: { slug: string; deletedAt: null };
+        select: {
+          id: true;
+          title: true;
+          slug: true;
+          content: true;
+          excerpt: true;
+          coverImage: true;
+          summary: true;
+          status: true;
+          featured: true;
+          viewCount: true;
+          likeCount: true;
+          publishedAt: true;
+          createdAt: true;
+          updatedAt: true;
+          author: { select: { id: true; name: true; image: true } };
+          tags: { select: { tag: { select: { id: true; name: true; slug: true } } } };
+          _count: { select: { comments: true } };
+        };
+      }>
+    >
+  >
+>;
+
+function getCachedPost(slug: string) {
+  return appCache<CachedPost | null>(
+    {
+      keyParts: ['post-by-slug', slug],
+      revalidate: 60,
+      tags: ['posts', `post:${slug}`],
+    },
+    async () =>
+      prisma.post.findUnique({
+        where: { slug, deletedAt: null },
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          content: true,
+          excerpt: true,
+          coverImage: true,
+          summary: true,
+          status: true,
+          featured: true,
+          viewCount: true,
+          likeCount: true,
+          publishedAt: true,
+          createdAt: true,
+          updatedAt: true,
+          author: { select: { id: true, name: true, image: true } },
+          tags: {
+            select: { tag: { select: { id: true, name: true, slug: true } } },
+          },
+          _count: { select: { comments: true } },
         },
-        _count: { select: { comments: true } },
-      },
-    });
-  },
-  ["post-by-slug"],
-  { revalidate: 60, tags: ["posts"] }
-);
+      })
+  );
+}
 
 async function getPost(
   slug: string,
@@ -132,6 +186,7 @@ async function getPost(
       content: post.content,
       excerpt: post.excerpt,
       coverImage: post.coverImage,
+      summary: post.summary,
       status: post.status,
       featured: post.featured,
       viewCount: post.viewCount,
@@ -164,7 +219,21 @@ export async function generateMetadata({
 }): Promise<{
   title?: string;
   description?: string;
-  openGraph?: { title?: string; description?: string; images?: string[]; type?: string };
+  openGraph?: {
+    title?: string;
+    description?: string;
+    images?: string[];
+    type?: string;
+    url?: string;
+    siteName?: string;
+    locale?: string;
+  };
+  twitter?: {
+    card?: string;
+    title?: string;
+    description?: string;
+    images?: string[];
+  };
 }> {
   const slug = decodeURIComponent(params.slug);
   const result = await getPost(slug);
@@ -177,6 +246,9 @@ export async function generateMetadata({
     .trim()
     .slice(0, 160);
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const postUrl = `${siteUrl}/blog/${post.slug}`;
+
   return {
     title: post.title,
     description: rawDesc,
@@ -185,6 +257,15 @@ export async function generateMetadata({
       description: rawDesc,
       images: post.coverImage ? [post.coverImage] : [],
       type: "article",
+      url: postUrl,
+      siteName: "生息日志 / VitaLog",
+      locale: "zh_CN",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: rawDesc,
+      images: post.coverImage ? [post.coverImage] : [],
     },
   };
 }
@@ -215,7 +296,7 @@ export default async function BlogDetailPage({
   const enableComments = await getBoolConfig("enable_comments", true);
 
   return (
-    <>
+    <ReadingModeToggle>
       {/* 阅读进度条 */}
       <ReadingProgress />
 
@@ -302,6 +383,17 @@ export default async function BlogDetailPage({
                 {/* 阅读量 */}
                 <span>{post.viewCount} 次阅读</span>
 
+                <span>·</span>
+
+                {/* 热度值 */}
+                <span className="flex items-center gap-1" title={`热度: ${post.viewCount + post.likeCount * 10 + post.commentCount * 20}`}>
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+                  </svg>
+                  热度 {post.viewCount + post.likeCount * 10 + post.commentCount * 20}
+                </span>
+
                 {post.status === "DRAFT" && (
                   <>
                     <span>·</span>
@@ -312,6 +404,9 @@ export default async function BlogDetailPage({
                 )}
               </div>
             </header>
+
+            {/* AI 摘要 */}
+            <ArticleSummary slug={post.slug} initialSummary={post.summary} />
 
             {/* 封面图 */}
             {post.coverImage && (
@@ -339,15 +434,38 @@ export default async function BlogDetailPage({
               <MDXContent source={post.content} />
             </div>
 
-            {/* 底部：点赞 + 分享 */}
-            <div className="mt-12 flex items-center justify-center border-t border-[rgb(var(--border))] pt-8">
+            {/* 底部：点赞 + 分享 + 海报 */}
+            <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-[rgb(var(--border))] pt-8">
               <LikeButton
                 slug={post.slug}
                 initialLiked={post.isLiked}
                 initialCount={post.likeCount}
                 isLoggedIn={!!session?.user}
               />
+              <div className="flex items-center gap-3">
+                <PosterGenerator
+                  title={post.title}
+                  author={post.author.name || "匿名"}
+                  authorImage={post.author.image}
+                  date={new Date(post.publishedAt || post.createdAt).toLocaleDateString("zh-CN", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                  excerpt={post.excerpt}
+                  content={post.content}
+                  tags={post.tags}
+                  viewCount={post.viewCount}
+                  likeCount={post.likeCount}
+                  commentCount={post.commentCount}
+                  slug={post.slug}
+                />
+                <ShareButtons title={post.title} url={`${process.env.NEXT_PUBLIC_SITE_URL || ""}/blog/${post.slug}`} />
+              </div>
             </div>
+
+            {/* 相关文章推荐 */}
+            <RelatedPosts postId={post.id} tags={post.tags} />
 
             {/* 评论区（延迟加载） */}
             {enableComments ? (
@@ -368,6 +486,6 @@ export default async function BlogDetailPage({
           {toc.length > 0 && <MobileTocFAB toc={toc} />}
         </div>
       </div>
-    </>
+    </ReadingModeToggle>
   );
 }

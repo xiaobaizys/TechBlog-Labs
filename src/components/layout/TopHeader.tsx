@@ -20,9 +20,6 @@ import { ThemeToggle } from './topbar/ThemeToggle'
  *   - 导航条目数组 useMemo 缓存，避免每次渲染重新构造
  *   - 滚动回调 useCallback 化
  *
- *  整体好处：父级 setHidden / setMobileOpen 触发的重渲染不会带动
- *  头像/主题图标 / 菜单重新构建；同时 JSX 可读性更好。
- *
  *  行为保持：
  *   - 默认固定顶部，宽度 100%
  *   - 向下滚动 > 100px 自动平滑隐藏
@@ -81,13 +78,16 @@ export function TopHeader() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [onScroll])
 
-  /* 导航条目：useMemo 缓存，避免每次渲染重新构造 */
+  /* 导航条目：useMemo 缓存，避免每次渲染重新构造。
+   *  「统计」入口对所有用户开放，位置在「生活」之后、「关于」之前 */
   const navItems = useMemo(
     () => [
       { href: '/', label: '首页', en: 'HOME' },
       { href: '/blog', label: '博客', en: 'BLOG' },
       { href: '/projects', label: '项目', en: 'PROJECTS' },
       { href: '/life', label: '生活', en: 'LIFE' },
+      { href: '/friends', label: '友链', en: 'FRIENDS' },
+      { href: '/stats', label: '统计', en: 'STATS' },
       { href: '/about', label: '关于', en: 'ABOUT' },
     ],
     [],
@@ -141,11 +141,6 @@ export function TopHeader() {
     </header>
   )
 }
-
-/* ============================================================
- *  模块常量
- * ============================================================ */
-const NAV_HREFS = ['/', '/blog', '/projects', '/life', '/about'] as const
 
 /* ============================================================
  *  移动端下拉（独立组件，逻辑不复杂，但和 TopHeader 解耦后易读很多）

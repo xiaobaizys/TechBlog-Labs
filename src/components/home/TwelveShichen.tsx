@@ -4,7 +4,7 @@ import { useRef } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { motion, useScroll, useTransform } from 'framer-motion'
-import { SHICHEN, DECO_SVG } from '@/lib/shichen'
+import { DECO_SVG, type Shichen } from '@/lib/shichen'
 
 /* 辰巳午未 单独抽出为水平 GSAP 面板。
  * 关键：用 next/dynamic + ssr:false 异步加载，首屏不进 GSAP 包。
@@ -101,15 +101,15 @@ const DOTS_LAYOUT: ReadonlyArray<{ top: string; left: string; size: number; opac
  *  - 滚动视差：每字不同速率
  *  - 字符悬停：颜色变金 + 抬升
  */
-export function TwelveShichen() {
+export function TwelveShichen({ shichenData }: { shichenData: readonly Shichen[] }) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   return (
     <div ref={containerRef} className="vitalog-shi-list">
-      {SHICHEN.map((s, i) => {
+      {shichenData.map((s, i) => {
         // 辰巳午未 合并为水平滚动面板，仅在起始位置插入一次
         if (i === NOON_PANEL_START) {
-          return <NoonHorizontalPanel key="noon-panel" />
+          return <NoonHorizontalPanel key="noon-panel" shichenData={shichenData} />
         }
         if (i > NOON_PANEL_START && i <= NOON_PANEL_END) {
           return null
@@ -120,7 +120,7 @@ export function TwelveShichen() {
   )
 }
 
-function ShiSection({ s, idx }: { s: (typeof SHICHEN)[number]; idx: number }) {
+function ShiSection({ s, idx }: { s: Shichen; idx: number }) {
   const ref = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({
     target: ref,

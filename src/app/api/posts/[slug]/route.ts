@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { incrementViewCount } from "@/lib/view-count";
 
 /**
  * GET /api/posts/:slug — 获取单篇文章
  *
  * - 公开文章：status=PUBLISHED 且未软删除
  * - 管理员可预览 DRAFT 文章
- * - 访问时自动增加 viewCount
+ * - 访问时自动增加 viewCount（使用 Redis 缓冲）
  */
 export async function GET(
   request: NextRequest,
@@ -75,12 +76,9 @@ export async function GET(
       );
     }
 
-    // ---------- 阅读量 +1（公开访问时） ----------
+    // ---------- 阅读量 +1（公开访问时，使用 Redis 缓冲） ----------
     if (!isAdmin || session?.user?.id !== post.author.id) {
-      await prisma.post.update({
-        where: { id: post.id },
-        data: { viewCount: { increment: 1 } },
-      });
+      await incrementViewCount(post.id);
     }
 
     // ---------- 检查当前用户是否点赞 ----------

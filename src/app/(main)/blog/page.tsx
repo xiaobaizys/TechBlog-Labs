@@ -4,7 +4,7 @@ import { type BlogCardPost } from '@/components/blog/BlogCard'
 import { getNumberConfig } from '@/lib/config'
 import { WritingHero } from '@/components/shared/WritingSection'
 import { prisma } from '@/lib/prisma'
-import { unstable_cache } from 'next/cache'
+import { appCache } from '@/lib/app-cache'
 import { buildPostKeywordWhere, buildPostTitleWhere, safePage, tokenize } from '@/lib/search'
 import { BlogSearchView } from '@/components/blog/BlogSearchView'
 import type { SearchCategory } from '@/components/search/SearchBar'
@@ -34,11 +34,17 @@ type BlogListData = {
 // ============================================================
 // 数据获取（性能优化）
 //   原实现：fetch('http://.../api/posts?status=PUBLISHED') 自调用
-//   现实现：直接 prisma + unstable_cache(60s)，跳过一次 HTTP 往返
+//   现实现：直接 prisma + appCache（Redis 优先 → Data Cache 兜底）
 // ============================================================
 
-async function getPosts(page: number, pageSize: number): Promise<BlogListData> {
-  const fetcher = unstable_cache(
+// 缓存的帖子列表获取函数（模块顶层定义）
+function getCachedPostsList(page: number, pageSize: number) {
+  return appCache<{ data: BlogCardPost[]; total: number }>(
+    {
+      keyParts: ['posts-list', String(page), String(pageSize)],
+      revalidate: 60,
+      tags: ['posts'],
+    },
     async () => {
       const where = { status: 'PUBLISHED' as const, deletedAt: null }
       const [posts, total] = await Promise.all([
@@ -63,6 +69,7 @@ async function getPosts(page: number, pageSize: number): Promise<BlogListData> {
             tags: {
               select: { tag: { select: { id: true, name: true, slug: true } } },
             },
+            _count: { select: { comments: true } },
           },
         }),
         prisma.post.count({ where }),
@@ -73,15 +80,16 @@ async function getPosts(page: number, pageSize: number): Promise<BlogListData> {
         createdAt: post.createdAt.toISOString(),
         publishedAt: post.publishedAt ? post.publishedAt.toISOString() : null,
         tags: post.tags.map((t) => t.tag),
+        commentCount: post._count.comments,
         highlight: null as { text: string; hit: boolean }[] | null,
       }))
       return { data: formatted, total }
-    },
-    ['posts-list', `p${page}`, `s${pageSize}`],
-    { revalidate: 60, tags: ['posts'] },
+    }
   )
+}
 
-  const { data, total } = await fetcher()
+async function getPosts(page: number, pageSize: number): Promise<BlogListData> {
+  const { data, total } = await getCachedPostsList(page, pageSize)
   return {
     data,
     pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) },
@@ -124,6 +132,7 @@ async function searchPosts(q: string | null, tag: string | null, title: string |
         createdAt: true,
         author: { select: { id: true, name: true, image: true } },
         tags: { select: { tag: { select: { id: true, name: true, slug: true } } } },
+        _count: { select: { comments: true } },
       },
     }),
     prisma.post.count({ where }),
@@ -135,6 +144,7 @@ async function searchPosts(q: string | null, tag: string | null, title: string |
     createdAt: p.createdAt.toISOString(),
     publishedAt: p.publishedAt ? p.publishedAt.toISOString() : null,
     tags: p.tags.map((t) => t.tag),
+    commentCount: p._count.comments,
     highlight: buildHighlight(p.excerpt, p.title, tokens),
   }))
 
@@ -152,8 +162,14 @@ async function searchPosts(q: string | null, tag: string | null, title: string |
   }
 }
 
-async function getTags(): Promise<TagInfo[]> {
-  const fetcher = unstable_cache(
+// 缓存的标签列表获取函数（模块顶层定义）
+function getCachedTags() {
+  return appCache<TagInfo[]>(
+    {
+      keyParts: ['tags-popular'],
+      revalidate: 300,
+      tags: ['tags', 'posts'],
+    },
     async () => {
       const tags = await prisma.tag.findMany({
         orderBy: { posts: { _count: 'desc' } },
@@ -171,11 +187,12 @@ async function getTags(): Promise<TagInfo[]> {
         slug: t.slug,
         postCount: t._count.posts,
       }))
-    },
-    ['tags-popular'],
-    { revalidate: 300, tags: ['tags', 'posts'] },
+    }
   )
-  return fetcher()
+}
+
+async function getTags(): Promise<TagInfo[]> {
+  return getCachedTags()
 }
 
 // ============================================================

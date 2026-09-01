@@ -6,6 +6,8 @@ import { TimeRibbon } from "./TimeRibbon";
 import { HeroIntro } from "./HeroIntro";
 import { TwelveShichen } from "./TwelveShichen";
 import { LazyOnIdle } from "@/components/util/LazyMount";
+import type { Shichen } from "@/lib/shichen";
+import type { HomeBackgroundItem } from "@/lib/home-backgrounds-cache";
 
 /* ============================================================
    按需加载（next/dynamic · ssr: false）
@@ -49,7 +51,13 @@ const BackToTopLazy = dynamic(
  *
  *  自定义光标已移除，恢复浏览器默认指针
  */
-export function HomeExperience() {
+export function HomeExperience({
+  shichenData,
+  homeBackgrounds,
+}: {
+  shichenData: readonly Shichen[];
+  homeBackgrounds: HomeBackgroundItem[];
+}) {
   return (
     <>
       {/* 滚动驱动背景层（仿 GSAP scrub：12 节颜色随滚动位置 1:1 插值） */}
@@ -64,13 +72,13 @@ export function HomeExperience() {
       <ScrollProgressLazy />
 
       {/* 固定导航层（右侧：十二时辰带） */}
-      <TimeRibbon />
+      <TimeRibbon shichenData={shichenData} />
 
-      {/* 首页开场：4 张背景图按需加载（首张立即显示，其余 3 张按需 fetch） */}
-      <HeroIntro />
+      {/* 首页开场：背景图由服务端预取传入，首屏无需等待客户端请求 */}
+      <HeroIntro homeBackgrounds={homeBackgrounds} />
 
       {/* 主体十二时辰：内部 NoonHorizontalPanel 已 dynamic 化 */}
-      <TwelveShichen />
+      <TwelveShichen shichenData={shichenData} />
 
       {/* 浮层交互：返回顶部（仅滚过 80% 后挂载） */}
       <BackToTopLazy />

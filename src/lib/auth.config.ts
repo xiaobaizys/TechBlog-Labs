@@ -46,6 +46,9 @@ export default {
           GitHub({
             clientId: process.env.AUTH_GITHUB_ID,
             clientSecret: process.env.AUTH_GITHUB_SECRET,
+            // 允许同一邮箱关联多个 OAuth 提供商
+            // 解决 "OAuthAccountNotLinked" 错误
+            allowDangerousEmailAccountLinking: true,
           }),
         ]
       : []),

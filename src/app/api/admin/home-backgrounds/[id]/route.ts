@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { clearHomeBackgroundsCache } from "@/lib/home-backgrounds-cache";
 
 /**
  * PUT /api/admin/home-backgrounds/[id] — 更新背景图片
@@ -30,6 +31,9 @@ export async function PUT(
       data,
     });
 
+    // 数据变更后清空缓存
+    await clearHomeBackgroundsCache();
+
     return NextResponse.json({ success: true, data: bg });
   } catch (error) {
     console.error("[PUT /api/admin/home-backgrounds/[id]]", error);
@@ -52,6 +56,9 @@ export async function DELETE(
 
     const { id } = await params;
     await prisma.homeBackground.delete({ where: { id } });
+
+    // 数据变更后清空缓存
+    await clearHomeBackgroundsCache();
 
     return NextResponse.json({ success: true });
   } catch (error) {
