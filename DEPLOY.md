@@ -37,20 +37,20 @@ Remove-Item -Recurse -Force .next\cache
 tar -czf deploy.tar.gz .next .env.production package.json package-lock.json next.config.mjs tsconfig.json tailwind.config.ts postcss.config.mjs public/image/logo.png public/sw.js src prisma scripts
 
 # 上传到服务器
-scp deploy.tar.gz root@117.72.12.223:/root/techblog/
+scp deploy.tar.gz root@<SERVER_IP>:/root/techblog/
 ```
 
 ### 3. 服务器端部署
 
 ```bash
-ssh root@117.72.12.223
+ssh root@<SERVER_IP>
 cd /root/techblog
 
 # 解压
 tar -xzf deploy.tar.gz
 
 # ⚠️ 关键：修复 DATABASE_URL（PostgreSQL 只监听 localhost）
-sed -i 's|@117.72.12.223:5432|@localhost:5432|g' .env.production
+sed -i 's|@<SERVER_IP>:5432|@localhost:5432|g' .env.production
 
 # 安装依赖 + 生成 Prisma Client
 npm install
@@ -72,7 +72,7 @@ Remove-Item -Recurse -Force .next
 npx next build
 Remove-Item -Recurse -Force .next\cache
 tar -czf deploy.tar.gz .next .env.production package.json package-lock.json next.config.mjs tsconfig.json tailwind.config.ts postcss.config.mjs public/image/logo.png public/sw.js src prisma scripts
-scp deploy.tar.gz root@117.72.12.223:/root/techblog/
+scp deploy.tar.gz root@<SERVER_IP>:/root/techblog/
 ```
 
 ```bash
@@ -80,7 +80,7 @@ scp deploy.tar.gz root@117.72.12.223:/root/techblog/
 cd /root/techblog
 pm2 stop techblog
 tar -xzf deploy.tar.gz
-sed -i 's|@117.72.12.223:5432|@localhost:5432|g' .env.production
+sed -i 's|@<SERVER_IP>:5432|@localhost:5432|g' .env.production
 npm install
 npx prisma generate
 pm2 restart techblog
@@ -112,7 +112,7 @@ pm2 start npm --name techblog -- run start -- -p 3000
 ```powershell
 # 本地打包图片
 tar -czf images.tar.gz public/image
-scp images.tar.gz root@117.72.12.223:/root/techblog/
+scp images.tar.gz root@<SERVER_IP>:/root/techblog/
 ```
 
 ```bash
@@ -124,12 +124,12 @@ pm2 restart techblog
 
 ### 2. 部署后注册/登录 500
 
-**原因**：`.env.production` 中 `DATABASE_URL` 指向 `117.72.12.223:5432`，但 PostgreSQL 只监听 `localhost`。
+**原因**：`.env.production` 中 `DATABASE_URL` 指向 `<SERVER_IP>:5432`，但 PostgreSQL 只监听 `localhost`。
 
 **解决**：每次解压 `deploy.tar.gz` 后必须执行：
 
 ```bash
-sed -i 's|@117.72.12.223:5432|@localhost:5432|g' .env.production
+sed -i 's|@<SERVER_IP>:5432|@localhost:5432|g' .env.production
 pm2 restart techblog
 ```
 

@@ -71,7 +71,7 @@ export const POST = withRateLimit(RATE_LIMITS.auth, async (request: NextRequest)
       });
 
       // 发送邮件
-      const baseUrl = process.env.NEXTAUTH_URL || "http://117.72.12.223";
+      const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
       await sendResetEmail(user.email, token, baseUrl);
     }
 

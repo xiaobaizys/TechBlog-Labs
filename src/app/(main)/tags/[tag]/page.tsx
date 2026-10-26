@@ -44,7 +44,7 @@ async function getTagPosts(
   tag: string,
   page: number
 ): Promise<{ success: boolean; data?: TagPageData; message?: string }> {
-  const baseUrl = process.env.NEXTAUTH_URL || "http://117.72.12.223";
+  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
   const res = await fetch(
     `${baseUrl}/api/tags/${tag}/posts?page=${page}&pageSize=9`,
     { cache: "no-store" }

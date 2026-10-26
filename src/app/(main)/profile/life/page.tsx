@@ -15,7 +15,7 @@ async function getMyPosts(userId: string, page: number): Promise<{
   data: LifePostData[];
   pagination: { page: number; totalPages: number; total: number };
 }> {
-  const baseUrl = process.env.NEXTAUTH_URL || "http://117.72.12.223";
+  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
   const res = await fetch(
     `${baseUrl}/api/life-posts/user/${userId}?page=${page}&pageSize=10`,
     { cache: "no-store" }

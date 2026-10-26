@@ -15,6 +15,10 @@
 /.next/
 /out/
 
+# next-pwa generated service worker (regenerated on build)
+/public/sw.js
+/public/workbox-*.js
+
 # production
 /build
 
@@ -66,11 +70,14 @@ nextjs-app-router-guide.md
 *.zip
 *.tar.gz
 
-# documentation
+# documentation / archived internal docs
 /docs/
 
-# test scripts
-/scripts/
+# local ops / one-off deploy scripts
+/scripts/deploy/
+
+# local editor / agent config
+/.claude/
 
 # local scratch build artifacts
 /temp-static/
